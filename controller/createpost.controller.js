@@ -21,7 +21,8 @@ const createpost= asyncHandler(async (req,res) => {
           throw new ApiError(400, "Tags must be an array of strings");
         }
       
-         const publishStatus = typeof isPublished === "boolean" ? isPublished : false;
+     const publishStatus = typeof isPublished === "boolean" ? isPublished : false;
+
 
       const postFile= req.files?.posturl?.[0]  ;
       

@@ -1,6 +1,3 @@
-Here’s your **README.md** format for the fullstack video app:
-
----
 
 # 🎬 Fullstack Video Application
 

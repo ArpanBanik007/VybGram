@@ -38,17 +38,20 @@ import Like from "../models/likes.models.js"
   const thumbnailFile = req.files?.thumbnail?.[0];
 
   if (!videoFile?.path) throw new ApiError(400, "Video file is required");
-
-  const videoPath = videoFile?.path;
-  const thumbnailPath = thumbnailFile?.path;    
-
-  // ✅ Duration validation
-  const durationInSeconds = await getVideoDurationInSeconds(videoPath);
-  if (durationInSeconds > 180) {
-    fs.unlinkSync(videoPath); // delete video from server
-    throw new ApiError(400, "Video must be under 3 minutes");
+ const allowedVideoTypes = ["video/mp4", "video/webm", "video/ogg", "video/mkv"];
+  if (!allowedVideoTypes.includes(videoFile.mimetype)) {
+    fs.unlinkSync(videoFile.path); 
+    throw new ApiError(400, "Only video files (mp4, webm, ogg, mkv) are allowed");
   }
 
+  const videoPath = videoFile.path;
+  const thumbnailPath = thumbnailFile?.path;
+
+  const durationInSeconds = await getVideoDurationInSeconds(videoPath);
+  if (durationInSeconds > 180) {
+    fs.unlinkSync(videoPath);
+    throw new ApiError(400, "Video must be under 3 minutes");
+  }
   // ✅ Upload to Cloudinary
   const [uploadedVideo, uploadedThumbnail] = await Promise.all([
     uploadOnCloudinary(videoPath, "videos/shorts"),

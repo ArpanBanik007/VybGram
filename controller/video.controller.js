@@ -175,38 +175,44 @@ const updateVideoThumbnail = asyncHandler(async (req, res) => {
   );
 });
 
-const deleteVideo= asyncHandler(async (req,res) => {
+
+
+const deleteVideo = asyncHandler(async (req, res) => {
   const { videoId } = req.params;
   const userId = req.user._id;
 
+  // Validate ObjectId
   if (!mongoose.Types.ObjectId.isValid(videoId)) {
     throw new ApiError(400, "Invalid video ID");
   }
 
-
-  const video = await Video.findOne({_id:videoId})
-
-
+  // Find video
+  const video = await Video.findById(videoId);
   if (!video) {
     throw new ApiError(404, "Video not found");
   }
 
-
-  if (video.userId.toString()!== userId.toString()&& req.user.role.toString()) {
-    throw new ApiError(400,"You ar not authorized user or admin")
+  // Authorization: owner or admin can delete
+  if (video.userId.toString() !== userId.toString() && req.user.role !== "admin") {
+    throw new ApiError(403, "You are not authorized to delete this video");
   }
 
-  await deleteFromCloudinary(video.thumbnail);
-  await deleteFromCloudinary(video.videourl);
+  // Delete files from Cloudinary (ensure these are public IDs, not URLs)
+  if (video.thumbnail) {
+    await deleteFromCloudinary(video.thumbnail);
+  }
+  if (video.videourl) {
+    await deleteFromCloudinary(video.videourl);
+  }
 
-  await Video.deleteOne()
+  // Delete from DB
+  await video.deleteOne();
 
   return res
     .status(200)
-    .json(new ApiResponse(200, null, "video deleted successfully"));
+    .json(new ApiResponse(200, null, "Video deleted successfully"));
+});
 
-
-})
 
 
   const getShortsFeed = asyncHandler(async (req, res) => {

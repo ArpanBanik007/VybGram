@@ -3,6 +3,8 @@ import ApiError from "../utils/ApiError.js";
 import asyncHandler from "../utils/asyncHandler.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import fs from "fs"
+import { deleteFromCloudinary } from "../utils/deleteFromCloudynary.js";
+import escapeStringRegexp from "escape-string-regexp";
 
 
 
@@ -57,21 +59,21 @@ const createpost= asyncHandler(async (req,res) => {
 
 
 
-const updatePost=asyncHandler(async (req,res) => {
-  const{ postId}= req.paramas;
-    const { title, description, tags } = req.body;
-    const userId= req.user?._id;
+const updatePost = asyncHandler(async (req, res) => {
+  const { postId } = req.params;
+  const { title, description, tags } = req.body;
+  const userId = req.user?._id;
 
-    if (!userId) throw new ApiError(401, "Unauthorized");
+  if (!userId) throw new ApiError(401, "Unauthorized");
 
-      const post = await Video.findById(postId);
-      if (!post) throw new ApiError(404, "Post not found");
+  const post = await Post.findById(postId);
+  if (!post) throw new ApiError(404, "Post not found");
 
+  if (post.uploadedBy.toString() !== userId.toString()) {
+    throw new ApiError(403, "You are not allowed to update this post");
+  }
 
-      if (post.uploadedBy.toString() !== userId.toString()) {
-          throw new ApiError(403, "You are not allowed to update this video");
-        }
-        if (title !== undefined) {
+  if (title !== undefined) {
     if (typeof title !== "string" || !title.trim()) {
       throw new ApiError(400, "Title must be a non-empty string");
     }
@@ -95,18 +97,89 @@ const updatePost=asyncHandler(async (req,res) => {
     post.tags = tags;
   }
 
+  await post.save();
 
-  await post.save()
   return res
-      .status(200)
-      .json(new ApiResponse(200, post, "Post updated successfully"));
+    .status(200)
+    .json(new ApiResponse(200, post, "Post updated successfully"));
+});
 
-})
+const deletePost = asyncHandler(async (req, res) => {
+  const { postId } = req.params;
+  const userId = req.user?._id;
 
+  if (!userId) throw new ApiError(401, "Unauthorized");
 
+  const post = await Post.findById(postId);
+  if (!post) throw new ApiError(404, "Post not found");
+
+  if (post.uploadedBy.toString() !== userId.toString()) {
+    throw new ApiError(403, "You are not allowed to delete this post");
+  }
+
+ 
+  if (post.posturl) {
+    await deleteFromCloudinary(post.postUrl);
+  }
+
+  await post.deleteOne();
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, null, "Post deleted successfully"));
+});
+
+const getPostsFeed = asyncHandler(async (req, res) => {
+  const {
+    lastPostId,
+    limit = 10,
+    search = "",
+  } = req.query;
+
+  const parsedLimit = Math.min(Math.max(parseInt(limit), 1), 50);
+
+  const query = {
+    isPublished: true,
+  };
+
+  // 🔍 Search by title, tags, or creator.username
+  if (search.trim() !== "") {
+    const escapedSearch = escapeStringRegexp(search.trim());
+    const searchRegex = new RegExp(escapedSearch, "i");
+
+    query.$or = [
+      { title: { $regex: searchRegex } },
+      { tags: { $elemMatch: { $regex: searchRegex } } }, // ✅ fixed regex for tags
+      { "creator.username": { $regex: searchRegex } },
+    ];
+  }
+
+  // ⏳ Pagination using lastPostId
+  if (lastPostId) {
+    const lastPost = await Post.findById(lastPostId).select("createdAt");
+    if (lastPost) {
+      query.createdAt = { $lt: lastPost.createdAt };
+    }
+  }
+
+  const posts = await Post.find(query)
+    .sort({ createdAt: -1 })
+    .limit(parsedLimit)
+    .select("title url views createdAt tags creator")
+    .populate("creator", "username avatar")
+    .lean();
+
+  return res.status(200).json(
+    new ApiResponse(200, { posts }, "Filtered posts feed loaded successfully") 
+  );
+});
 
 
 export{
     createpost,
+    updatePost,
+    deletePost,
+getPostsFeed,
+
 
 }

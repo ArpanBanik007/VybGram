@@ -268,6 +268,29 @@ const deleteVideo = asyncHandler(async (req, res) => {
 });
 
 
+const getSingleVideo = asyncHandler(async (req, res) => {
+  const { videoId } = req.params;
+
+  // 1. ID validation
+  if (!mongoose.Types.ObjectId.isValid(videoId)) {
+    throw new ApiError(400, "Invalid Video ID"); 
+  }
+
+
+  const video = await Video.findById(videoId)
+    .populate("createdBy", "username avatar") 
+    .lean(); 
+  // 3. Not Found check
+  if (!video) {
+    throw new ApiError(404, "Video not found");
+  }
+
+  // 4. Successful response
+  return res
+    .status(200)
+    .json(new ApiResponse(200, video, "Fetched single video successfully"));
+});
+
 
 const addViews = asyncHandler(async (req, res) => {
   const { videoId } = req.params;
@@ -333,7 +356,6 @@ const toggleLikes = asyncHandler(async (req, res) => {
 });
 
 
-
  const toggleDislike = asyncHandler(async (req, res) => {
   const { videoId } = req.params;
   const userId = req.user?._id;
@@ -353,7 +375,9 @@ const toggleLikes = asyncHandler(async (req, res) => {
     return res
       .status(200)
       .json(new ApiResponse(200, null, "Dislike removed successfully"));
-  } else {
+  } 
+  
+  else {
    
     await Dislike.create({ user: userId, video: videoId });
 
@@ -363,10 +387,7 @@ const toggleLikes = asyncHandler(async (req, res) => {
       .status(200)
       .json(new ApiResponse(200, null, "Disliked the video"));
   }
-});
-
-
-
+});  
 export{
   createVideo,
   updateVideo,
@@ -376,6 +397,7 @@ export{
   addViews,
   toggleLikes,
   toggleDislike,
+  getSingleVideo,
   
 
 

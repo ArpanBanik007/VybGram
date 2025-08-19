@@ -6,33 +6,47 @@ const dislikeSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
-      index: true, 
+      index: true,
     },
     video: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Video",
-      required: true,
+      default: null,
       index: true,
-     },
-
+    },
+    post: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Post",
+      default: null,
+      index: true,
+    },
     createdAt: {
       type: Date,
       default: Date.now,
-      immutable: true, // once created, can't be changed
+      immutable: true,
     },
   },
   {
-    timestamps: false, // we don’t need updatedAt
-    versionKey: false, // remove __v
+    timestamps: false,
+    versionKey: false,
   }
 );
 
-// Prevent duplicate dislikes by same user
-dislikeSchema.index({ user: 1, video: 1 }, { unique: true });
+// Prevent duplicate dislikes by same user on same target
+dislikeSchema.index({ user: 1, video: 1 }, { unique: true, sparse: true });
+dislikeSchema.index({ user: 1, post: 1 }, { unique: true, sparse: true });
 
-// Utility method to check dislike existence
-dislikeSchema.statics.isDisliked = async function (userId, videoId) {
-  return await this.exists({ user: userId, video: videoId });
+// Utility method (same as Like.isLiked but for dislike)
+dislikeSchema.statics.isDisliked = async function (
+  userId,
+  { videoId = null, postId = null }
+) {
+  const filter = { user: userId };
+
+  if (videoId) filter.video = videoId;
+  if (postId) filter.post = postId;
+
+  return await this.exists(filter);
 };
 
 const Dislike = mongoose.model("Dislike", dislikeSchema);

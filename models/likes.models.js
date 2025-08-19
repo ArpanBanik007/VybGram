@@ -1,40 +1,51 @@
-const mongoose = require("mongoose");
+import mongoose from "mongoose";
 
-// Define the Like schema
 const likeSchema = new mongoose.Schema(
   {
     user: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
-      index: true, // Quick search on user
+      index: true,
     },
     video: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Video",
-      required: true,
-      index: true, // Quick search on video
+      default: null,
+      index: true,
+    },
+    post: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Post",
+      default: null,
+      index: true,
     },
     createdAt: {
       type: Date,
       default: Date.now,
-      immutable: true, // Ensures timestamp never changes
+      immutable: true,
     },
   },
   {
-    timestamps: false, // No updatedAt needed for Like
-    versionKey: false, // __v field removed
+    timestamps: false,
+    versionKey: false,
   }
 );
 
-// Prevent duplicate likes from same user on same video
-likeSchema.index({ user: 1, video: 1 }, { unique: true });
+// Indexes for unique constraints
+likeSchema.index({ user: 1, video: 1 }, { unique: true, sparse: true });
+likeSchema.index({ user: 1, post: 1 }, { unique: true, sparse: true });
 
-// Static method to check if user already liked the video
-likeSchema.statics.isLiked = async function (userId, videoId) {
-  return await this.exists({ user: userId, video: videoId });
+
+likeSchema.statics.isLiked = async function (userId, { videoId = null, postId = null }) {
+  const filter = { user: userId };
+
+  if (videoId) filter.video = videoId;
+  if (postId) filter.post = postId;
+
+  return await this.exists(filter);
 };
 
- const Like = mongoose.model("Like", likeSchema);
+const Like = mongoose.model("Like", likeSchema);
 
- export default Like;
+export default Like;

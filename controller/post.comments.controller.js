@@ -2,26 +2,28 @@ import ApiError from "../utils/ApiError.js";
 import ApiResponse from "../utils/ApiResponse.js";
 import asyncHandler from "../utils/asyncHandler.js";
 import Comment from "../models/comments.models.js"
-import Video from "../models/video.model.js";
+import Post from "../models/createpost.models.js";
 
 
- const createComment = asyncHandler(async (req, res) => {
+
+
+const createPostComment = asyncHandler(async (req, res) => {
   const userId = req.user?._id;
   const { content, parentComment } = req.body;
-  const { videoId } = req.params;
+  const { postId } = req.params; // Post ID path theke ashbe
 
-
-  if (!videoId || !userId || !content || content.trim() === "") {
-    throw new ApiError(400, "Video ID, User ID, and valid content are required");
+  // Validation
+  if (!postId || !userId || !content || content.trim() === "") {
+    throw new ApiError(400, "Post ID, User ID, and valid content are required");
   }
 
-
-  const video = await Video.findById(videoId);
-  if (!video) {
-    throw new ApiError(404, "Video not found");
+  // Check Post exists or not
+  const post = await Post.findById(postId);
+  if (!post) {
+    throw new ApiError(404, "Post not found");
   }
 
-
+  // If reply to another comment
   let parent = null;
   if (parentComment) {
     parent = await Comment.findById(parentComment);
@@ -29,56 +31,57 @@ import Video from "../models/video.model.js";
       throw new ApiError(404, "Parent comment not found");
     }
 
-    if (String(parent.video) !== videoId) {
-      throw new ApiError(400, "Parent comment does not belong to this video");
+    // Ensure parent comment belongs to the same post
+    if (String(parent.post) !== postId) {
+      throw new ApiError(400, "Parent comment does not belong to this post");
     }
   }
 
-
+  // Create new comment
   const newComment = await Comment.create({
     content: content.trim(),
     user: userId,
-    video: videoId,
+    post: postId, // ekhane video na, post use korte hobe
     parentComment: parentComment || null,
   });
 
-  
-  await Video.findByIdAndUpdate(videoId, { $inc: { commentsCount: 1 } });
+  // Update comment count in Post
+  await Post.findByIdAndUpdate(postId, { $inc: { commentsCount: 1 } });
 
   return res
     .status(201)
-    .json(
-      new ApiResponse(201, newComment, "Comment posted successfully")
-    );
+    .json(new ApiResponse(201, newComment, "Comment posted successfully on Post"));
 });
 
 
-const getAllComments = asyncHandler(async (req, res) => {
-  const { videoId } = req.params;
+const getAllCommentsForPost = asyncHandler(async (req, res) => {
+  const { postId } = req.params;
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 10;
   const skip = (page - 1) * limit;
 
-  if (!videoId) {
-    throw new ApiError(400, "Video ID is required");
+  if (!postId) {
+    throw new ApiError(400, "Post ID is required");
   }
 
-  const videoExists = await Video.findById(videoId);
-  if (!videoExists) {
-    throw new ApiError(404, "Video not found");
+  // ✅ Check if post exists
+  const postExists = await Post.findById(postId);
+  if (!postExists) {
+    throw new ApiError(404, "Post not found");
   }
 
+  // ✅ Fetch top-level comments (only parent=null)
   const comments = await Comment.find({
-    video: videoId,
+    post: postId,
     parentComment: null,
   })
     .populate("user", "username avatar")
-    .sort({ createdAt: -1 })
+    .sort({ createdAt: -1 }) // latest first
     .skip(skip)
-    .limit(limit)     
+    .limit(limit)
     .lean();
 
-  // 🧠 Add replyCount only, don't attach replies
+  // ✅ Count replies for each comment
   const commentIds = comments.map((c) => c._id);
   const replyCounts = await Comment.aggregate([
     { $match: { parentComment: { $in: commentIds } } },
@@ -90,6 +93,7 @@ const getAllComments = asyncHandler(async (req, res) => {
     replyCountMap[rc._id.toString()] = rc.count;
   }
 
+  // ✅ Attach replyCount to each comment
   const commentsWithReplyCount = comments.map((c) => ({
     ...c,
     replyCount: replyCountMap[c._id.toString()] || 0,
@@ -97,10 +101,12 @@ const getAllComments = asyncHandler(async (req, res) => {
 
   return res
     .status(200)
-    .json(new ApiResponse(200, commentsWithReplyCount, "Main comments fetched"));
+    .json(new ApiResponse(200, commentsWithReplyCount, "Main comments fetched for post"));
 });
 
-const getRepliesByCommentId = asyncHandler(async (req, res) => {
+
+// ✅ Fetch Replies for a Comment under a Post
+const getRepliesByCommentIdForPost = asyncHandler(async (req, res) => {
   const { commentId } = req.params;
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 10;
@@ -110,7 +116,7 @@ const getRepliesByCommentId = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Comment ID is required");
   }
 
-  // ✅ Check if parent comment exists (optional but clean)
+  // ✅ Ensure parent comment exists
   const parentComment = await Comment.findById(commentId);
   if (!parentComment) {
     throw new ApiError(404, "Parent comment not found");
@@ -128,21 +134,26 @@ const getRepliesByCommentId = asyncHandler(async (req, res) => {
   const totalReplies = await Comment.countDocuments({ parentComment: commentId });
 
   return res.status(200).json(
-    new ApiResponse(200, {
-      replies,
-      currentPage: page,
-      totalReplies,
-      totalPages: Math.ceil(totalReplies / limit),
-    }, "Replies fetched")
-  );
+    new ApiResponse(
+      200,
+      {
+        replies,
+        currentPage: page,
+        totalReplies,
+        totalPages: Math.ceil(totalReplies / limit),
+      },
+      "Replies fetched for post"
+    )
+  );
 });
 
-const commentReply = asyncHandler(async (req, res) => {
+
+// ✅ Reply to a comment under a Post
+const commentReplyForPost = asyncHandler(async (req, res) => {
   const { commentId } = req.params;
   const { content } = req.body;
   const userId = req.user?._id;
 
-  // Validate required fields
   if (!commentId || !content?.trim()) {
     return res.status(400).json(
       new ApiResponse(400, null, "Parent comment ID and content are required")
@@ -152,20 +163,19 @@ const commentReply = asyncHandler(async (req, res) => {
   // Check if parent comment exists
   const parentComment = await Comment.findById(commentId).lean();
   if (!parentComment) {
-    return res.status(404).json(
-      new ApiResponse(404, null, "Parent comment not found")
-    );
+    return res
+      .status(404)
+      .json(new ApiResponse(404, null, "Parent comment not found"));
   }
 
-  // Create the reply
+  // ✅ Create reply with post reference
   const reply = await Comment.create({
     content: content.trim(),
     user: userId,
     parentComment: commentId,
-    video: parentComment.video,
+    post: parentComment.post, // important
   });
 
-  // Populate user fields
   await reply.populate("user", "username avatar");
 
   return res
@@ -173,82 +183,80 @@ const commentReply = asyncHandler(async (req, res) => {
     .json(new ApiResponse(201, reply, "Reply posted successfully"));
 });
 
-const updateComment = asyncHandler(async (req, res) => {
-  const { videoId, commentId } = req.params;
+
+// ✅ Update a comment under Post
+const updateCommentForPost = asyncHandler(async (req, res) => {
+  const { postId, commentId } = req.params;
   const { content } = req.body;
   const userId = req.user._id;
 
-  // Step 1: Validate content
   if (!content?.trim()) {
     throw new ApiError(400, "Comment content is required");
   }
 
-  // Step 2: Atomically find and update if comment exists, user owns it, and it's under the same video
   const updatedComment = await Comment.findOneAndUpdate(
     {
       _id: commentId,
-      video: videoId,
+      post: postId,
       user: userId,
     },
-    {
-      $set: { content: content.trim() },
-    },
-    {
-      new: true, // return the updated document
-      runValidators: true, // enforce schema validation
-    }
+    { $set: { content: content.trim() } },
+    { new: true, runValidators: true }
   ).populate("user", "username avatar");
 
-  // Step 3: Handle not found or unauthorized
   if (!updatedComment) {
-    throw new ApiError(404, "Comment not found or you're not authorized to update this comment");
+    throw new ApiError(
+      404,
+      "Comment not found or you're not authorized to update this comment"
+    );
   }
 
-  // Step 4: Respond with updated comment
   return res
     .status(200)
-    .json(new ApiResponse(200, updatedComment, "Comment updated successfully"));
+    .json(
+      new ApiResponse(200, updatedComment, "Comment updated successfully")
+    );
 });
 
 
-const deleteComment = asyncHandler(async (req, res) => {
-  const { videoId, commentId } = req.params;
+// ✅ Delete a comment under Post
+const deleteCommentForPost = asyncHandler(async (req, res) => {
+  const { postId, commentId } = req.params;
   const userId = req.user._id;
 
-  // Step 1: Check if the comment exists and belongs to the user (and the video)
   const comment = await Comment.findOne({
     _id: commentId,
-    video: videoId,
+    post: postId,
     user: userId,
   });
 
   if (!comment) {
-    throw new ApiError(404, "Comment not found or you're not authorized to delete it");
+    throw new ApiError(
+      404,
+      "Comment not found or you're not authorized to delete it"
+    );
   }
 
-  // Step 2: Delete the comment
+  // Delete the comment + its replies
   await comment.deleteOne();
-
-  // Optional: If replies exist, you may want to delete them too (cascading delete)
   await Comment.deleteMany({ parentComment: commentId });
 
-  // Step 3: Respond
   return res
     .status(200)
-    .json(new ApiResponse(200, null, "Comment and its replies deleted successfully"));
+    .json(
+      new ApiResponse(200, null, "Comment and its replies deleted successfully")
+    );
 });
 
 
-
-const toggleLikeOnComment = asyncHandler(async (req, res) => {
+// ✅ Toggle like on comment under Post
+const toggleLikeOnCommentForPost = asyncHandler(async (req, res) => {
   const userId = req.user._id;
   const { commentId } = req.params;
-
 
   if (!mongoose.Types.ObjectId.isValid(commentId)) {
     throw new ApiError(400, "Invalid comment ID");
   }
-
 
   const alreadyLiked = await Comment.exists({
     _id: commentId,
@@ -256,25 +264,16 @@ const toggleLikeOnComment = asyncHandler(async (req, res) => {
   });
 
   let updatedComment;
-
   if (alreadyLiked) {
-   
     updatedComment = await Comment.findByIdAndUpdate(
       commentId,
-      {
-        $pull: { likes: userId },
-        $inc: { likesCount: -1 },
-      },
+      { $pull: { likes: userId }, $inc: { likesCount: -1 } },
       { new: true }
     );
   } else {
-   
     updatedComment = await Comment.findByIdAndUpdate(
       commentId,
-      {
-        $addToSet: { likes: userId },
-        $inc: { likesCount: 1 },
-      },
+      { $addToSet: { likes: userId }, $inc: { likesCount: 1 } },
       { new: true }
     );
   }
@@ -293,19 +292,12 @@ const toggleLikeOnComment = asyncHandler(async (req, res) => {
 });
 
 
-
-
-
 export {
-    createComment,
-    getAllComments,
-    getRepliesByCommentId,
-    commentReply,
-    updateComment,
-    deleteComment,
-    toggleLikeOnComment,
-
-
-    
-
+    createPostComment,
+    getAllCommentsForPost,
+    getRepliesByCommentIdForPost,
+    updateCommentForPost,
+    toggleLikeOnCommentForPost,
+    commentReplyForPost,
+    deleteCommentForPost
 }

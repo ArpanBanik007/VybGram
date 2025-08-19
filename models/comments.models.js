@@ -21,15 +21,22 @@ const commentSchema = new mongoose.Schema(
       required: true,
     },
 
+   
     video: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Video",
-      required: true,
+      default: null,
+    },
+
+    post: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Post",
+      default: null,
     },
 
     parentComment: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Comment", // For replies
+      ref: "Comment", 
       default: null,
     },
 
@@ -39,11 +46,18 @@ const commentSchema = new mongoose.Schema(
         ref: "User",
       },
     ],
-
   },
   {
-    timestamps: true, // Adds createdAt and updatedAt
+    timestamps: true, // createdAt and updatedAt
   }
 );
+
+// validation: must have either video OR post
+commentSchema.pre("save", function (next) {
+  if (!this.video && !this.post) {
+    return next(new Error("Comment must belong to either a video or a post"));
+  }
+  next();
+});
 
 export default mongoose.model("Comment", commentSchema);

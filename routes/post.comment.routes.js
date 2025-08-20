@@ -8,9 +8,10 @@ import {
   updateCommentForPost,
   deleteCommentForPost,
   toggleLikeOnCommentForPost,
-} from "../controllers/comment.controller.js";
-import { verifyJWT } from "../middlewares/verifyJWT.js";
-import { isBlocked } from "../middlewares/isBlocked.js";
+} from "../controller/post.comments.controller.js";
+
+import { verifyJWT } from "../middlewire/auth.middlewire.js";
+import { isBlocked } from "../middlewire/block.middleware.js";
 
 const router = express.Router();
 

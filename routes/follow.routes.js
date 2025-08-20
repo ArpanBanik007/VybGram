@@ -8,7 +8,7 @@ import {
   blockUser,
   unblockUser,
 } from "../controller/follow.controller.js"; // তোমার controller
-import { isBlocked } from "../middlewire/isBlocked.middlewire.js"; // block check middleware
+import { isBlocked } from "../middlewire/block.middleware.js"; // block check middleware
 
 const router = Router();
 

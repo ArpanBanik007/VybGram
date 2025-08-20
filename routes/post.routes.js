@@ -11,7 +11,7 @@ import {
   togglePostLike,
   togglePostDislike,
   addPostViews,
-} from "../controller/post.controller.js";
+} from "../controller/createpost.controller.js";
 
 const router = Router();
 

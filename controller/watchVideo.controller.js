@@ -129,24 +129,19 @@ const deleteAllHistory = asyncHandler(async (req, res) => {
 
 // Watch Later 
 
-
-const addWatchLater = asyncHandler(async (req, res) => {
+ const addWatchLater = asyncHandler(async (req, res) => {
   const userId = req.user?._id;
-  const videoId = req.params.videoId || req.body.videoId;
-
+  const videoId = req.query.videoId || req.body.videoId; // ✅ query string first
 
   if (!userId || !videoId) {
     throw new ApiError(400, "User ID and Video ID are required");
   }
 
-
   if (!mongoose.Types.ObjectId.isValid(videoId)) {
     throw new ApiError(400, "Invalid Video ID format");
   }
 
-  const alreadyExists = await watchLaterModels
-    .findOne({ userId, videoId })
-    .lean();
+  const alreadyExists = await watchLaterModels.findOne({ userId, videoId }).lean();
 
   if (alreadyExists) {
     return res.status(200).json(
@@ -154,26 +149,20 @@ const addWatchLater = asyncHandler(async (req, res) => {
     );
   }
 
-
   const newWatchLater = await watchLaterModels.create({
     userId,
     videoId,
-    AddAt: new Date(),
+    watchAt: new Date(), // ✅ field matches sort
   });
 
   return res.status(201).json(
-    new ApiResponse(
-      201,
-      newWatchLater,
-      "Video added to Watch Later successfully"
-    )
+    new ApiResponse(201, newWatchLater, "Video added to Watch Later successfully")
   );
 });
 
-
-const deleteWatchLaterID = asyncHandler(async (req, res) => {
+ const deleteWatchLaterID = asyncHandler(async (req, res) => {
   const userId = req.user._id;
-  const videoId = req.params.videoId || req.body.videoId;
+  const videoId = req.query.videoId || req.body.videoId; // ✅ query string first
 
   if (!userId || !videoId) {
     throw new ApiError(400, "User ID and Video ID are required");
@@ -189,14 +178,12 @@ const deleteWatchLaterID = asyncHandler(async (req, res) => {
     throw new ApiError(404, "Video not found in Watch Later");
   }
 
-  return res
-    .status(200)
-    .json(new ApiResponse(200, null, "Video removed from Watch Later successfully"));
+  return res.status(200).json(
+    new ApiResponse(200, null, "Video removed from Watch Later successfully")
+  );
 });
 
-
-
-const getAllWatchLater = asyncHandler(async (req, res) => {
+ const getAllWatchLater = asyncHandler(async (req, res) => {
   const userId = req.user?._id;
 
   if (!userId) {
@@ -210,12 +197,11 @@ const getAllWatchLater = asyncHandler(async (req, res) => {
   const [watchLaterList, totalCount] = await Promise.all([
     watchLaterModels
       .find({ userId })
-      .sort({ watchAt: -1 })
+      .sort({ watchAt: -1 }) // ✅ field matches addWatchLater
       .skip(skip)
       .limit(limit)
       .populate("videoId", "title thumbnail duration")
       .lean(),
-
     watchLaterModels.countDocuments({ userId }),
   ]);
 
@@ -237,12 +223,6 @@ const getAllWatchLater = asyncHandler(async (req, res) => {
     )
   );
 });
-
-
-
-
-
-
 
 
 

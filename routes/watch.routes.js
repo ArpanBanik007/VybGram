@@ -8,7 +8,7 @@ import {
   addWatchLater,
   deleteWatchLaterID,
   getAllWatchLater,
-} from "../controller/watch.controller.js";
+} from "../controller/watchVideo.controller.js";
 
 const router = Router();
 
@@ -31,14 +31,8 @@ router.delete("/history/all", verifyJWT, deleteAllHistory);
 /**
  * Watch Later Routes
  */
-
-// ✅ Add video to Watch Later
-router.post("/watchlater/:videoId?", verifyJWT, addWatchLater);
-
-// ✅ Remove video from Watch Later
-router.delete("/watchlater/:videoId?", verifyJWT, deleteWatchLaterID);
-
-// ✅ Get all Watch Later videos (paginated)
+router.post("/watchlater", verifyJWT, addWatchLater); // POST /watchlater?videoId=123
+router.delete("/watchlater", verifyJWT, deleteWatchLaterID); // DELETE /watchlater?videoId=123
 router.get("/watchlater", verifyJWT, getAllWatchLater);
 
 export default router;

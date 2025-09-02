@@ -5,7 +5,7 @@ import ApiError from "../utils/ApiError.js"
 import ApiResponse from "../utils/ApiResponse.js"
 import { generateOTP, sendOTPEmail } from "../services/email.services.js"
 import getLocationFromIP from "../utils/getLocationFromIP.js"
-
+import { uploadOnCloudinary } from "../utils/cloudinary.js"
 
 
 

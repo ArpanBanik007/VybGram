@@ -11,6 +11,7 @@ import {
   togglePostLike,
   togglePostDislike,
   addPostViews,
+  getOwnAllPosts,
 } from "../controller/createpost.controller.js";
 
 const router = Router();
@@ -20,16 +21,33 @@ const router = Router();
  */
 
 // ✅ Create a new post (image optional)
-router.post("/", verifyJWT, upload.single("posturl"), createpost);
+router.route("/").post(
+    upload.fields([
+        {
+            name: "postFile",
+            maxCount: 1
+        },
+       
+    ]),
+    verifyJWT,
+    createpost
+);
+
 
 // ✅ Get posts feed (search, pagination)
-router.get("/", getPostsFeed);
+router.get("/feed", getPostsFeed);
+
+
+router.route("/my-posts").get(verifyJWT,getOwnAllPosts)
+
+
+router.route("/my-posts/:postId").get(verifyJWT,getSinglePost)
 
 // ✅ Get single post by ID
 router.get("/:postId", getSinglePost);
 
 // ✅ Update post (only owner, image optional)
-router.patch("/:postId", verifyJWT, upload.single("posturl"), updatePost);
+router.patch("/:postId", verifyJWT,  updatePost);
 
 // ✅ Delete post (only owner)
 router.delete("/:postId", verifyJWT, deletePost);
@@ -42,5 +60,8 @@ router.post("/:postId/dislike", verifyJWT, togglePostDislike);
 
 // ✅ Add view to post
 router.post("/:postId/view", addPostViews);
+
+
+
 
 export default router;

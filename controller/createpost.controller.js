@@ -15,21 +15,23 @@ import mongoose from "mongoose";
  * Create Post (text + optional image)
  */
 const createpost = asyncHandler(async (req, res) => {
-  const { title, description, tags = [], isPublished } = req.body;
+  const { title, description,  isPublished } = req.body;
   const userId = req.user?._id;
+  console.log("User ID:", userId); // ✅ এখানে debug করো
 
-  if (!title?.trim()) throw new ApiError(400, "Title is required");
+  // if (!title?.trim()) throw new ApiError(400, "Title is required");
   if (!description?.trim()) throw new ApiError(400, "Description is required");
   if (description.length > 1000) throw new ApiError(400, "Description must be under 1000 characters");
-  if (!Array.isArray(tags) || tags.some(tag => typeof tag !== "string")) {
-    throw new ApiError(400, "Tags must be an array of strings");
-  }
+  // if (!Array.isArray(tags) || tags.some(tag => typeof tag !== "string")) {
+  //   throw new ApiError(400, "Tags must be an array of strings");
+  // }
 
   const publishStatus = typeof isPublished === "boolean" ? isPublished : false;
 
   // ✅ Handle optional image
   let postUrl = "";
-  const postFile = req.file;
+  const postFile = req.files?.postFile ? req.files.postFile[0] : null
+   console.log("📸 File received:", postFile);
   if (postFile) {
     const allowedImageTypes = ["image/jpeg", "image/png", "image/webp"];
     if (!allowedImageTypes.includes(postFile.mimetype)) {
@@ -45,7 +47,8 @@ const createpost = asyncHandler(async (req, res) => {
   const newPost = await Post.create({
     title: title.trim(),
     description: description.trim(),
-    tags,
+    //tags,
+    userId:userId,
     posturl: postUrl,
     isPublished: publishStatus,
     uploadedBy: userId,
@@ -148,7 +151,7 @@ const getPostsFeed = asyncHandler(async (req, res) => {
   const { lastPostId, limit = 10, search = "" } = req.query;
   const parsedLimit = Math.min(Math.max(parseInt(limit), 1), 50);
 
-  const query = { isPublished: true };
+  const query = {  }; // or {} for testing
 
   if (search.trim() !== "") {
     const escapedSearch = escapeStringRegexp(search.trim());
@@ -157,7 +160,7 @@ const getPostsFeed = asyncHandler(async (req, res) => {
     query.$or = [
       { title: { $regex: searchRegex } },
       { tags: { $elemMatch: { $regex: searchRegex } } },
-      { "creator.username": { $regex: searchRegex } },
+      { "createdBy.username": { $regex: searchRegex } },
     ];
   }
 
@@ -169,8 +172,8 @@ const getPostsFeed = asyncHandler(async (req, res) => {
   const posts = await Post.find(query)
     .sort({ createdAt: -1 })
     .limit(parsedLimit)
-    .select("title posturl views createdAt tags creator")
-    .populate("creator", "username avatar")
+    .select("title posturl views createdAt tags createdBy")
+    .populate("createdBy", "username fullName avatar")
     .lean();
 
   return res
@@ -268,6 +271,64 @@ const addPostViews = asyncHandler(async (req, res) => {
   return res.status(200).json(new ApiResponse(200, null, "View added successfully if viewer is new"));
 });
 
+
+
+const getOwnAllPosts = asyncHandler(async (req, res) => {
+  const userId = req.user?._id;
+  console.log("UserId",userId)
+  if (!userId) throw new ApiError(401, "Unauthorized");
+
+  const userPosts = await Post.find({ createdBy: userId,})
+    .sort({ createdAt: -1 })
+    .populate("createdBy", "username avatar")
+    .lean();
+
+  if (!userPosts || userPosts.length === 0) {
+    return res.status(404).json({
+      status: "fail",
+      message: "No posts found for this user",
+      data: [],
+    });
+  }
+
+  return res.status(200).json({
+    status: "success",
+    message: "Fetched user's posts successfully",
+    data: userPosts,
+  });
+});
+
+
+
+
+
+const getOwnSinglePost = asyncHandler(async (req, res) => {
+  const { postId } = req.params;
+  const userId = req.user?._id;
+
+  if (!postId || !userId) {
+    throw new ApiError(400, "Post ID or User not found");
+  }
+
+  const userSinglePost = await Post.findOne({
+    _id: postId,        
+    createdBy: userId,  
+  })
+    .populate("createdBy", "username fullName avatar")
+    .lean();
+
+  if (!userSinglePost) {
+    throw new ApiError(404, "No post found for this user");
+  }
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(200, userSinglePost, "Fetched user's single post successfully")
+    );
+});
+
+
 export {
   createpost,
   updatePost,
@@ -277,4 +338,7 @@ export {
   togglePostLike,
   togglePostDislike,
   addPostViews,
+  getOwnAllPosts,
+  getOwnSinglePost,
+  
 };

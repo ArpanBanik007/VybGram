@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { verifyJWT } from "../middlewire/auth.middlewire.js";
 import {
-  createwatchHistory,
+  //createwatchHistory,
   getAllWatchHistory,
   deleteHistorybyID,
   deleteAllHistory,
@@ -17,7 +17,7 @@ const router = Router();
  */
 
 // ✅ Add or update watch history
-router.post("/history", verifyJWT, createwatchHistory);
+//router.post("/history", verifyJWT, createwatchHistory);
 
 // ✅ Get all watch history (paginated)
 router.get("/history", verifyJWT, getAllWatchHistory);

@@ -8,23 +8,19 @@ const postSchema = new mongoose.Schema(
       required: [true, "User ID is required"],
     },
 
-    title: {
-      type: String,
-      required: [true, "Video title is required"],
-      trim: true,
-      minlength: [3, "Title must be at least 3 characters long"],
-      maxlength: [100, "Title must be less than 100 characters"],
-      unique: true, // Optional: ensure title is unique
-    },
+  title: {
+  type: String,
+  trim: true,
+  minlength: [3, "Title must be at least 3 characters long"],
+  maxlength: [100, "Title must be less than 100 characters"],
+  // unique: true,  <-- remove this
+},
+
 
     posturl: {
       type: String,
-      required: [true, "Video URL is required"],
+      required: [true, "Post URL is required"],
       trim: true,
-      match: [
-        /^https?:\/\/(?:www\.)?[\w-]+\.[a-z]{2,6}(?:\/[^\s]*)?$/,
-        "Please provide a valid video URL (https://...)",
-      ],
     },
 
     description: {
@@ -47,11 +43,11 @@ const postSchema = new mongoose.Schema(
 
     tags: {
       type: [String],
+      default: [],
       validate: {
         validator: (arr) => Array.isArray(arr) && arr.length <= 10,
         message: "Maximum 10 tags allowed",
       },
-      default: [],
     },
 
     isPublished: {
@@ -79,7 +75,6 @@ const postSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
-
   },
   {
     timestamps: true,
@@ -87,7 +82,7 @@ const postSchema = new mongoose.Schema(
   }
 );
 
-
+// ✅ Text index for search (title + tags)
 postSchema.index({ title: "text", tags: "text" });
 
 const Post = mongoose.model("Post", postSchema);

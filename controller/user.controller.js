@@ -5,7 +5,7 @@ import ApiError from "../utils/ApiError.js"
 import ApiResponse from "../utils/ApiResponse.js"
 import { generateOTP, sendOTPEmail } from "../services/email.services.js"
 import getLocationFromIP from "../utils/getLocationFromIP.js"
-
+import { uploadOnCloudinary } from "../utils/cloudinary.js"
 
 
 
@@ -70,7 +70,7 @@ const generateAccessAndRefereshTokens = async(userId) =>{
 
     // Generate access and refresh tokens
     
-    const { accessToken, refreshToken } =generateAccessAndRefereshTokens(user._id);
+    const { accessToken, refreshToken } =await generateAccessAndRefereshTokens(user._id);
 
     // Save refresh token in database
     user.refreshToken = refreshToken;
@@ -85,8 +85,15 @@ const generateAccessAndRefereshTokens = async(userId) =>{
 
     return res
         .status(201)
-        .cookie("accessToken", accessToken, { httpOnly: true, secure: true })
-        .cookie("refreshToken", refreshToken, { httpOnly: true, secure: true })
+        .cookie("accessToken", accessToken,
+             { httpOnly: true, 
+                secure: false,
+                  sameSite: "lax", 
+            })
+        .cookie("refreshToken", refreshToken, 
+            { httpOnly: true,
+    secure: false,
+    sameSite: "lax",})
         .json(
             new ApiResponse(201, 
                 { user: createdUser, accessToken, refreshToken },
@@ -107,6 +114,7 @@ const sendOTP = asyncHandler(async (req, res) => {
   if (user.isVerified) throw new ApiError(400, "Email already verified");
 
   const otp = generateOTP(); // 6-digit string
+  console.log(otp)
 
   // Save OTP in UserOTP collection
   await UserOTP.create({
@@ -315,15 +323,22 @@ const changeCurrentPassword = asyncHandler(async(req, res) => {
 })
 
 
-const getCurrentUser = asyncHandler(async(req, res) => {
+
+const getCurrentUser = asyncHandler(async (req, res) => {
+ 
+  const user = await User.findById(req.user._id).select("-password");
+
+  if (!user) {
     return res
+      .status(404)
+      .json(new ApiResponse(404, null, "User not found"));
+  }
+
+  return res
     .status(200)
-    .json(new ApiResponse(
-        200,
-        req.user,
-        "User fetched successfully"
-    ))
-})
+    .json(new ApiResponse(200, user, "User fetched successfully"));
+});
+
 
 const updateAccountDetails = asyncHandler(async(req, res) => {
     const {fullName, email} = req.body

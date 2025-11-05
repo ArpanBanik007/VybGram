@@ -11,7 +11,13 @@ const watchHistorySchema = new mongoose.Schema(
     videoId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Video",
-      required: [true, "Video ID is required"],
+      default: "", 
+    },
+
+    postId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Post", 
+      default: "", 
     },
 
     watchedAt: {
@@ -20,15 +26,15 @@ const watchHistorySchema = new mongoose.Schema(
     },
   },
   {
-    timestamps: true,     
-    versionKey: false    
+    timestamps: true,
+    versionKey: false,
   }
 );
 
+// ✅ Index: userId + postId + videoId (optional)
+watchHistorySchema.index({ userId: 1, postId: 1, videoId: 1 });
 
-watchHistorySchema.index({ userId: 1, videoId: 1 }, { unique: false });
-
-
+// ✅ Single field index
 watchHistorySchema.index({ userId: 1 });
 
 export default mongoose.model("WatchHistory", watchHistorySchema);

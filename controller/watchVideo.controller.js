@@ -157,7 +157,41 @@ const addWatchLater = asyncHandler(async (req, res) => {
 });
 
 
+const getAllWatchLater = asyncHandler(async (req, res) => {
+  const userId = req.user?._id;
 
+  // ✅ User check
+  if (!userId) {
+    throw new ApiError(400, "UserId is required");
+  }
+
+  // ✅ Find all watch later items for the user
+const watchLaterItems = await watchLaterModels
+  .find({ userId })
+  .populate({
+    path: "postId",
+    select: "title posturl createdBy",
+    populate: {
+      path: "createdBy",
+      select: "username avatar",
+    },
+  })
+  .populate({
+    path: "videoId",
+    select: "title thumbnail videoUrl createdBy",
+    populate: {
+      path: "createdBy",
+      select: "username avatar",
+    },
+  })
+  .sort({ watchAt: -1 })
+  .lean();
+
+  // ✅ Response
+  return res.status(200).json(
+    new ApiResponse(200, watchLaterItems, "Fetched all Watch Later items successfully")
+  );
+});
 
 // createwatchHistory,
 
@@ -166,6 +200,6 @@ getAllWatchHistory,
 deleteHistorybyID,
 deleteAllHistory,
 addWatchLater,
-deleteWatchLaterID,
+//deleteWatchLaterID,
 getAllWatchLater,
 }

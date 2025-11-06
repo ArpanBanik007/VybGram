@@ -1,65 +1,136 @@
-import React from "react";
-import myVideo from "../assets/myvideo.mp4";
-// ✅ Saved videos list
-const savedVideos = [
-  {
-    id: 1,
-    time: "1d ago",
-    text: "My new painting 🎨",
-    videoUrl: "https://www.w3schools.com/html/mov_bbb.mp4",
-  },
-  {
-    id: 2,
-    time: "2d ago",
-    text: "Chilling with friends 😎",
-    videoUrl: "https://www.w3schools.com/html/mov_bbb.mp4",
-  },
-  {
-    id: 3,
-    time: "3d ago",
-    text: "Nature vibes 🌿",
-    videoUrl: "https://www.w3schools.com/html/mov_bbb.mp4",
-  },
-  {
-    id: 4,
-    time: "4d ago",
-    text: "Travel diaries ✈️",
-    videoUrl: "https://www.w3schools.com/html/mov_bbb.mp4",
-  },
-  {
-    id: 5,
-    time: "4d ago",
-    text: "Travel diaries ✈️",
-    videoUrl: myVideo,
-  },
-  {
-    id: 6,
-    time: "4d ago",
-    text: "Travel diaries ✈️",
-    videoUrl: myVideo,
-  },
-];
+import React, { useEffect, useState } from "react";
+import axios from "axios";
+import {
+  FaHeart,
+  FaComment,
+  FaShareNodes,
+  FaRegBookmark,
+} from "react-icons/fa6";
+import { IoMdHeartDislike } from "react-icons/io";
+import { PiDotsThreeBold } from "react-icons/pi";
 
 const AllSaved = () => {
+  const [savedItems, setSavedItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  // ✅ Fetch all watch later items from backend
+  useEffect(() => {
+    const fetchSaved = async () => {
+      try {
+        const res = await axios.get(
+          "http://localhost:8000/api/v1/watch/watchlater",
+          { withCredentials: true }
+        );
+        setSavedItems(res.data?.data || []);
+      } catch (error) {
+        console.error("Failed to fetch saved items:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchSaved();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="text-center text-gray-400 py-10 text-lg">
+        Loading your saved items...
+      </div>
+    );
+  }
+
+  if (savedItems.length === 0) {
+    return (
+      <div className="text-center text-gray-200 py-10 text-lg">
+        You haven’t saved anything yet 😕
+      </div>
+    );
+  }
+
   return (
-    <div className="p-2">
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 gap-3">
-        {savedVideos.map((video) => (
+    <div className="p-2 flex flex-col items-center">
+      {savedItems.map((item) => {
+        const post = item.postId;
+        const video = item.videoId;
+        const createdBy = post?.createdBy || video?.createdBy;
+
+        return (
           <div
-            key={video.id}
-            className="bg-slate-900 rounded-xl overflow-hidden shadow hover:shadow-lg transition-shadow duration-300"
+            key={item._id}
+            className="relative bg-white dark:bg-slate-800 w-full max-w-xl mx-auto mt-4 border rounded-xl shadow-md mb-6 transition-all duration-300 hover:shadow-lg"
           >
-            {/* 16:9 aspect ratio */}
-            <div className="flex justify-center items-center aspect-video w-full ">
-              <video
-                src={video.videoUrl}
-                controls
-                className="w-full h-90 object-center"
-              />
+            {/* Header */}
+            <div className="flex items-center justify-between p-3">
+              <div className="flex items-center">
+                <img
+                  src={createdBy?.avatar || "https://via.placeholder.com/40"}
+                  alt="avatar"
+                  className="h-10 w-10 rounded-full border"
+                />
+                <div className="ml-3">
+                  <h3 className="font-semibold text-gray-900 dark:text-gray-100">
+                    {createdBy?.username || "Unknown"}
+                  </h3>
+                </div>
+              </div>
+
+              <PiDotsThreeBold className="text-2xl text-gray-400 cursor-pointer hover:text-gray-200" />
+            </div>
+
+            {/* Content */}
+            <div className="px-3 pb-3">
+              {post?.title && (
+                <p className="mb-2 font-semibold text-gray-800 dark:text-gray-100">
+                  {post.title}
+                </p>
+              )}
+              {/* Image post */}
+              {post?.posturl && (
+                <img
+                  src={post.posturl}
+                  alt="Saved Post"
+                  className="w-full max-h-80 rounded-md object-contain"
+                />
+              )}
+
+              {/* Video post */}
+              {video?.videoUrl && (
+                <video
+                  controls
+                  className="w-full rounded-md max-h-80 object-contain mt-2"
+                >
+                  <source src={video.videoUrl} type="video/mp4" />
+                  Your browser does not support the video tag.
+                </video>
+              )}
+            </div>
+
+            {/* Footer Actions */}
+            <div className="border-t flex justify-around py-2 text-gray-400 text-sm">
+              <button className="flex items-center gap-1 hover:text-red-500">
+                <FaHeart className="text-base" />
+                <span>Like</span>
+              </button>
+
+              <button className="flex items-center gap-1 hover:text-violet-900">
+                <IoMdHeartDislike className="text-base" />
+                <span>Dislike</span>
+              </button>
+
+              <button className="flex items-center gap-1 hover:text-green-500">
+                <FaComment className="text-base" />
+                <span>Comment</span>
+              </button>
+
+              <button className="flex items-center gap-1 hover:text-purple-600">
+                <FaShareNodes className="text-base" />
+                <span>Share</span>
+              </button>
             </div>
           </div>
-        ))}
-      </div>
+        );
+      })}
     </div>
   );
 };

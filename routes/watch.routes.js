@@ -6,7 +6,7 @@ import {
   deleteHistorybyID,
   deleteAllHistory,
   addWatchLater,
-  deleteWatchLaterID,
+//  deleteWatchLaterID,
   getAllWatchLater,
 } from "../controller/watchVideo.controller.js";
 
@@ -32,7 +32,7 @@ router.delete("/history/all", verifyJWT, deleteAllHistory);
  * Watch Later Routes
  */
 router.post("/watchlater", verifyJWT, addWatchLater); // POST /watchlater?videoId=123
-router.delete("/watchlater", verifyJWT, deleteWatchLaterID); // DELETE /watchlater?videoId=123
+//router.delete("/watchlater", verifyJWT, deleteWatchLaterID); // DELETE /watchlater?videoId=123
 router.get("/watchlater", verifyJWT, getAllWatchLater);
 
 export default router;

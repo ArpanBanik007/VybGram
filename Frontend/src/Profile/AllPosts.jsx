@@ -74,25 +74,18 @@ const AllPosts = () => {
     }
   };
 
-  // Save button click handle
-  const handleSavePost = async (postId) => {
+  const handleAddToWatchLater = async (postId) => {
     try {
-      if (!postId) return; // safety check
-
       const res = await axios.post(
         "http://localhost:8000/api/v1/watch/watchlater",
-        { postId }, // Body তে postId path
+        { postId }, // 👈 backend-এ postId পাঠাচ্ছি
         { withCredentials: true }
       );
 
-      if (res.status === 201) {
-        alert("Post saved to Watch Later ✅");
-      } else {
-        alert(res.data.message); // Already exists or other messages
-      }
+      alert(res.data?.message || "Added to Watch Later ✅");
     } catch (error) {
-      console.error("Save Post Error:", error.response?.data || error.message);
-      alert("Failed to save post ❌");
+      console.error("Failed to add to Watch Later:", error);
+      alert(error.response?.data?.message || "Failed to add ❌");
     }
   };
 
@@ -201,7 +194,7 @@ const AllPosts = () => {
               className="absolute top-14 right-4 bg-slate-800 text-gray-100 rounded-xl shadow-lg p-3 w-48 z-50 flex flex-col gap-2 border border-slate-600 transition-all duration-300 animate-fadeIn"
             >
               <button
-                onClick={() => handleSavePost(post._id)}
+                onClick={() => handleAddToWatchLater(post._id)}
                 className="flex items-center gap-3 hover:bg-slate-700 p-2 rounded-lg"
               >
                 <FaRegBookmark className="text-lg" />

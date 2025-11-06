@@ -10,7 +10,12 @@ const watchLaterSchema = new mongoose.Schema(
     videoId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Video",
-      required: true,
+      
+    },
+    postId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Post",
+     
     },
     
     AddAt: {

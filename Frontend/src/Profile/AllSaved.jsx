@@ -1,11 +1,6 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
-import {
-  FaHeart,
-  FaComment,
-  FaShareNodes,
-  FaRegBookmark,
-} from "react-icons/fa6";
+import { FaHeart, FaComment, FaShareNodes } from "react-icons/fa6";
 import { IoMdHeartDislike } from "react-icons/io";
 import { PiDotsThreeBold } from "react-icons/pi";
 
@@ -13,7 +8,6 @@ const AllSaved = () => {
   const [savedItems, setSavedItems] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // ✅ Fetch all watch later items from backend
   useEffect(() => {
     const fetchSaved = async () => {
       try {
@@ -58,7 +52,7 @@ const AllSaved = () => {
         return (
           <div
             key={item._id}
-            className="relative bg-white dark:bg-slate-800 w-full max-w-xl mx-auto mt-4 border rounded-xl shadow-md mb-6 transition-all duration-300 hover:shadow-lg"
+            className="relative bg-white dark:bg-slate-800 w-full max-w-xl mx-auto mt-4 border rounded-xl shadow-md mb-6 hover:shadow-lg"
           >
             {/* Header */}
             <div className="flex items-center justify-between p-3">
@@ -85,6 +79,7 @@ const AllSaved = () => {
                   {post.title}
                 </p>
               )}
+
               {/* Image post */}
               {post?.posturl && (
                 <img
@@ -94,38 +89,34 @@ const AllSaved = () => {
                 />
               )}
 
-              {/* Video post */}
+              {/* Video */}
               {video?.videoUrl && (
                 <video
                   controls
                   className="w-full rounded-md max-h-80 object-contain mt-2"
                 >
                   <source src={video.videoUrl} type="video/mp4" />
-                  Your browser does not support the video tag.
                 </video>
               )}
             </div>
 
-            {/* Footer Actions */}
+            {/* Footer */}
             <div className="border-t flex justify-around py-2 text-gray-400 text-sm">
               <button className="flex items-center gap-1 hover:text-red-500">
-                <FaHeart className="text-base" />
-                <span>Like</span>
+                <FaHeart />
+                Like
               </button>
-
               <button className="flex items-center gap-1 hover:text-violet-900">
-                <IoMdHeartDislike className="text-base" />
-                <span>Dislike</span>
+                <IoMdHeartDislike />
+                Dislike
               </button>
-
               <button className="flex items-center gap-1 hover:text-green-500">
-                <FaComment className="text-base" />
-                <span>Comment</span>
+                <FaComment />
+                Comment
               </button>
-
               <button className="flex items-center gap-1 hover:text-purple-600">
-                <FaShareNodes className="text-base" />
-                <span>Share</span>
+                <FaShareNodes />
+                Share
               </button>
             </div>
           </div>

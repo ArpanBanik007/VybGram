@@ -104,94 +104,82 @@ const deleteAllHistory = asyncHandler(async (req, res) => {
 
 // Watch Later 
 
+
+
 const addWatchLater = asyncHandler(async (req, res) => {
   const userId = req.user?._id;
-  const videoId = req.query.videoId || req.body.videoId;
-  const postId = req.query.postId || req.body.postId;
+  const videoId = req.body.videoId;
+  const postId = req.body.postId;
 
-  // ✅ user check
-  if (!userId) {
-    throw new ApiError(400, "UserId is required");
-  }
-
-  // ✅ must have either postId or videoId
-  if (!postId && !videoId) {
+  if (!userId) throw new ApiError(400, "UserId is required");
+  if (!postId && !videoId)
     throw new ApiError(400, "Either postId or videoId is required");
-  }
 
-  // ✅ Validate only the provided ones
-  if (videoId && !mongoose.Types.ObjectId.isValid(videoId)) {
-    throw new ApiError(400, "Invalid Video ID format");
-  }
+  // ✅ building conditions for AND query
+  const conditions = [{ userId }];
+  if (postId) conditions.push({ postId });
+  if (videoId) conditions.push({ videoId });
 
-  if (postId && !mongoose.Types.ObjectId.isValid(postId)) {
-    throw new ApiError(400, "Invalid Post ID format");
-  }
-
-  // ✅ Check if already exists
-  const alreadyExists = await watchLaterModels.findOne({
-    userId,
-    $or: [
-      videoId ? { videoId } : {},
-      postId ? { postId } : {},
-    ],
-  }).lean();
+  // ✅ Check if already saved
+  const alreadyExists = await watchLaterModels
+    .findOne({ $and: conditions })
+    .lean();
 
   if (alreadyExists) {
     return res.status(200).json(
-      new ApiResponse(200, alreadyExists, "Video or Post is already in Watch Later")
+      new ApiResponse(200, alreadyExists, "Already in Watch Later ✅")
     );
   }
 
-  // ✅ Create a new WatchLater record safely
+  // ✅ Create new entry
   const newWatchLater = await watchLaterModels.create({
     userId,
-    videoId: videoId || undefined, // only saves if present
-    postId: postId || undefined,   // only saves if present
-    watchAt: new Date(),
+    postId: postId || undefined,
+    videoId: videoId || undefined,
+    AddAt: new Date(),
   });
 
   return res.status(201).json(
-    new ApiResponse(201, newWatchLater, "Video or Post added to Watch Later successfully")
+    new ApiResponse(201, newWatchLater, "Added to Watch Later ✅")
   );
 });
+
+
+
+
 
 
 const getAllWatchLater = asyncHandler(async (req, res) => {
   const userId = req.user?._id;
 
-  // ✅ User check
-  if (!userId) {
-    throw new ApiError(400, "UserId is required");
-  }
+  if (!userId) throw new ApiError(400, "UserId is required");
 
-  // ✅ Find all watch later items for the user
-const watchLaterItems = await watchLaterModels
-  .find({ userId })
-  .populate({
-    path: "postId",
-    select: "title posturl createdBy",
-    populate: {
-      path: "createdBy",
-      select: "username avatar",
-    },
-  })
-  .populate({
-    path: "videoId",
-    select: "title thumbnail videoUrl createdBy",
-    populate: {
-      path: "createdBy",
-      select: "username avatar",
-    },
-  })
-  .sort({ watchAt: -1 })
-  .lean();
+  const watchLaterItems = await watchLaterModels
+    .find({ userId })
+    .populate({
+      path: "postId",
+      select: "title posturl createdBy",
+      populate: {
+        path: "createdBy",
+        select: "username avatar",
+      },
+    })
+    .populate({
+      path: "videoId",
+      select: "title thumbnail videoUrl createdBy",
+      populate: {
+        path: "createdBy",
+        select: "username avatar",
+      },
+    })
+    .sort({ AddAt: -1 })
+    .lean();
 
-  // ✅ Response
   return res.status(200).json(
-    new ApiResponse(200, watchLaterItems, "Fetched all Watch Later items successfully")
+    new ApiResponse(200, watchLaterItems, "Fetched all Watch Later items ✅")
   );
 });
+
 
 // createwatchHistory,
 

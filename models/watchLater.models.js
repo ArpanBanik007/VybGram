@@ -7,29 +7,40 @@ const watchLaterSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
+
     videoId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Video",
-      
+      sparse: true,
     },
+
     postId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Post",
-     
+      sparse: true,
     },
-    
+
     AddAt: {
       type: Date,
       default: Date.now,
     },
   },
   {
-    timestamps: true,  // adds createdAt and updatedAt
-    versionKey: false, // removes __v
+    timestamps: true,
+    versionKey: false,
   }
 );
 
-// Compound index to prevent duplicate entries
-watchLaterSchema.index({ userId: 1, videoId: 1 }, { unique: true, sparse: true });
+// ✅ Unique Index: Prevent duplicate video saves by same user
+watchLaterSchema.index(
+  { userId: 1, videoId: 1 },
+  { unique: true, sparse: true }
+);
+
+// ✅ Prevent duplicate post saves by same user
+watchLaterSchema.index(
+  { userId: 1, postId: 1 },
+  { unique: true, sparse: true }
+);
 
 export default mongoose.model("WatchLater", watchLaterSchema);

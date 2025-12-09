@@ -56,7 +56,7 @@ function Navbar() {
       onClick: () =>
         location.pathname === "/home"
           ? window.location.reload()
-          : navigate("/"),
+          : navigate("/home"),
     },
     {
       id: 2,

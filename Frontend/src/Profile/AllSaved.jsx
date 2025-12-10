@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import axios from "axios";
 import { FaHeart, FaComment, FaShareNodes } from "react-icons/fa6";
 import { IoMdHeartDislike } from "react-icons/io";
@@ -8,8 +8,10 @@ const AllSaved = () => {
   const [savedItems, setSavedItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [openMenuId, setOpenMenuId] = useState(null);
+
   const menuRef = useRef(null);
 
+  // Fetch saved items
   useEffect(() => {
     const fetchSaved = async () => {
       try {
@@ -28,8 +30,26 @@ const AllSaved = () => {
     fetchSaved();
   }, []);
 
-  const toggleSaveMenu = (savedItems) => {
-    setSavedItems((prevId) => (prevId === savedItems ? null : savedItems));
+  // Toggle menu for each item
+  const toggleSaveMenu = (id) => {
+    setOpenMenuId((prev) => (prev === id ? null : id));
+  };
+
+  // Remove from watch later
+  const handleRemoveWatchLater = async (savedItemId) => {
+    try {
+      await axios.delete("http://localhost:8000/api/v1/watch/watchlater", {
+        data: { savedItemId },
+        withCredentials: true,
+      });
+
+      setSavedItems((prev) => prev.filter((item) => item._id !== savedItemId));
+
+      alert("Removed from Watch Later");
+    } catch (error) {
+      console.error(error);
+      alert(error.response?.data?.message || "Failed to remove");
+    }
   };
 
   if (loading) {
@@ -43,7 +63,7 @@ const AllSaved = () => {
   if (savedItems.length === 0) {
     return (
       <div className="text-center text-gray-200 py-10 text-lg">
-        You haven’t saved anything yet 😕
+        You haven’t saved anything yet.
       </div>
     );
   }
@@ -70,12 +90,15 @@ const AllSaved = () => {
                 />
                 <div className="ml-3">
                   <h3 className="font-semibold text-gray-900 dark:text-gray-100">
-                    {createdBy?.username || "Unknown"}
+                    {createdBy?.username || "Unknown User"}
                   </h3>
                 </div>
               </div>
 
-              <PiDotsThreeBold className="text-2xl text-gray-400 cursor-pointer hover:text-gray-200" />
+              <PiDotsThreeBold
+                className="text-2xl text-gray-400 cursor-pointer hover:text-gray-200"
+                onClick={() => toggleSaveMenu(item._id)}
+              />
             </div>
 
             {/* Content */}
@@ -86,7 +109,6 @@ const AllSaved = () => {
                 </p>
               )}
 
-              {/* Image post */}
               {post?.posturl && (
                 <img
                   src={post.posturl}
@@ -95,7 +117,6 @@ const AllSaved = () => {
                 />
               )}
 
-              {/* Video */}
               {video?.videoUrl && (
                 <video
                   controls
@@ -109,22 +130,36 @@ const AllSaved = () => {
             {/* Footer */}
             <div className="border-t flex justify-around py-2 text-gray-400 text-sm">
               <button className="flex items-center gap-1 hover:text-red-500">
-                <FaHeart />
-                Like
+                <FaHeart /> Like
               </button>
+
               <button className="flex items-center gap-1 hover:text-violet-900">
-                <IoMdHeartDislike />
-                Dislike
+                <IoMdHeartDislike /> Dislike
               </button>
+
               <button className="flex items-center gap-1 hover:text-green-500">
-                <FaComment />
-                Comment
+                <FaComment /> Comment
               </button>
+
               <button className="flex items-center gap-1 hover:text-purple-600">
-                <FaShareNodes />
-                Share
+                <FaShareNodes /> Share
               </button>
             </div>
+
+            {/* Menu */}
+            {openMenuId === item._id && (
+              <div
+                ref={menuRef}
+                className="absolute top-14 right-4 bg-slate-800 text-gray-100 rounded-xl shadow-lg p-3 w-48 z-50 flex flex-col gap-2 border border-slate-600"
+              >
+                <button
+                  className="flex items-center gap-3 hover:bg-slate-700 p-2 rounded-lg text-red-400 hover:text-red-200"
+                  onClick={() => handleRemoveWatchLater(item._id)}
+                >
+                  Remove
+                </button>
+              </div>
+            )}
           </div>
         );
       })}

@@ -35,6 +35,6 @@ router.post("/watchlater", verifyJWT, addWatchLater); // POST /watchlater?videoI
 //router.delete("/watchlater", verifyJWT, deleteWatchLaterID); // DELETE /watchlater?videoId=123
 router.get("/watchlater", verifyJWT, getAllWatchLater);
 
-router.delete("/watchlater/delete", verifyJWT, deleteWatchLater);
+router.delete("/watchlater", verifyJWT, deleteWatchLater);
 
 export default router;

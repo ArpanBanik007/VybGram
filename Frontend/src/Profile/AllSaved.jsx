@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import axios from "axios";
 import { FaHeart, FaComment, FaShareNodes } from "react-icons/fa6";
 import { IoMdHeartDislike } from "react-icons/io";
@@ -7,6 +7,8 @@ import { PiDotsThreeBold } from "react-icons/pi";
 const AllSaved = () => {
   const [savedItems, setSavedItems] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [openMenuId, setOpenMenuId] = useState(null);
+  const menuRef = useRef(null);
 
   useEffect(() => {
     const fetchSaved = async () => {
@@ -25,6 +27,10 @@ const AllSaved = () => {
 
     fetchSaved();
   }, []);
+
+  const toggleSaveMenu = (savedItems) => {
+    setSavedItems((prevId) => (prevId === savedItems ? null : savedItems));
+  };
 
   if (loading) {
     return (

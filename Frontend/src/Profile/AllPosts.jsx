@@ -14,7 +14,7 @@ const AllPosts = () => {
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [openMenuId, setOpenMenuId] = useState(null);
-  const menuRef = useRef(null); // 👈 dropdown detect করার জন্য ref
+  const menuRef = useRef(null);
 
   useEffect(() => {
     const fetchMyPosts = async () => {
@@ -36,7 +36,6 @@ const AllPosts = () => {
     fetchMyPosts();
   }, []);
 
-  // 👇 যখন screen এর বাইরে click হবে menu বন্ধ করবে
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (menuRef.current && !menuRef.current.contains(event.target)) {

@@ -19,19 +19,19 @@ const getAllWatchHistory = asyncHandler(async (req, res) => {
   }
 
   const page = parseInt(req.query.page) || 1;
-  const limit = Math.min(parseInt(req.query.limit) || 10, 100); 
+  const limit = Math.min(parseInt(req.query.limit) || 10, 100);
   const skip = (page - 1) * limit;
 
-  
+
   const [watchHistory, totalCount] = await Promise.all([
-   watchHistoryModel.find({ userId })
+    watchHistoryModel.find({ userId })
       .sort({ watchAt: -1 }) // most recent first
       .skip(skip)
       .limit(limit)
-      .populate("videoId", "title thumbnail duration") 
+      .populate("videoId", "title thumbnail duration")
       .lean(),
 
-    watchHistoryModel.countDocuments({ userId }) 
+    watchHistoryModel.countDocuments({ userId })
   ]);
 
   const totalPages = Math.ceil(totalCount / limit);
@@ -46,7 +46,7 @@ const getAllWatchHistory = asyncHandler(async (req, res) => {
         limit,
       },
     }, "Watch History fetched successfully")
- );
+  );
 });
 
 
@@ -181,13 +181,46 @@ const getAllWatchLater = asyncHandler(async (req, res) => {
 });
 
 
+const deleteWatchLater = asyncHandler(async (req, res) => {
+  const userId = req.user?._id;
+  if (!userId) throw new ApiError(400, "UserId is required");
+
+  const savedItemId = req.body.savedItemId || req.params.savedItemId;
+
+  if (!savedItemId) {
+    throw new ApiError(400, "savedItemId is required");
+  }
+
+  if (!mongoose.Types.ObjectId.isValid(savedItemId)) {
+    throw new ApiError(400, "Invalid savedItemId format");
+  }
+
+  const saved = await watchLaterModels.findOne({
+    _id: savedItemId,
+    userId: userId,
+  });
+
+  if (!saved) {
+    throw new ApiError(404, "Saved item not found");
+  }
+
+  await saved.deleteOne();
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, null, "Saved item deleted successfully"));
+});
+
+
+
+
 // createwatchHistory,
 
-export{
-getAllWatchHistory,
-deleteHistorybyID,
-deleteAllHistory,
-addWatchLater,
-//deleteWatchLaterID,
-getAllWatchLater,
+export {
+  getAllWatchHistory,
+  deleteHistorybyID,
+  deleteAllHistory,
+  addWatchLater,
+  deleteWatchLater,
+  getAllWatchLater,
 }

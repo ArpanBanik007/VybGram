@@ -96,7 +96,9 @@ function Navbar() {
       <p
         className="text-2xl font-semibold italic text-slate-300 hover:bg-slate-900 px-2 py-1 rounded-md cursor-pointer"
         onClick={() =>
-          location.pathname === "/" ? window.location.reload() : navigate("/")
+          location.pathname === "/home"
+            ? window.location.reload()
+            : navigate("/home")
         }
       >
         Zync

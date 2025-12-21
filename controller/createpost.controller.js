@@ -32,6 +32,9 @@ const createpost = asyncHandler(async (req, res) => {
   let postUrl = "";
   const postFile = req.files?.postFile ? req.files.postFile[0] : null
    console.log("📸 File received:", postFile);
+
+
+   
   if (postFile) {
     const allowedImageTypes = ["image/jpeg", "image/png", "image/webp"];
     if (!allowedImageTypes.includes(postFile.mimetype)) {
@@ -39,6 +42,8 @@ const createpost = asyncHandler(async (req, res) => {
       throw new ApiError(400, "Only image files (jpg, png, webp) are allowed");
     }
     const uploadPost = await uploadOnCloudinary(postFile.path, "posts");
+
+    
     fs.unlink(postFile.path, () => {});
     if (!uploadPost?.url) throw new ApiError(500, "Post upload failed");
     postUrl = uploadPost.url;

@@ -21,10 +21,10 @@ const videoSchema = new mongoose.Schema(
       type: String,
       required: [true, "Video URL is required"],
       trim: true,
-      match: [
-        /^https?:\/\/.+/,
-        "Please provide a valid video URL (https://...)",
-      ],
+      // match: [
+      //   /^http?:\/\/.+/,
+      //   "Please provide a valid video URL (https://...)",
+      // ],
     },
 
     description: {
@@ -54,8 +54,8 @@ const videoSchema = new mongoose.Schema(
       default: [],
     },
 
-    category: {
-  type: String,
+     category: {
+   type: String,
   enum: ["education", "entertainment", "sports", "tech", "music", "others"],
   default: "others",
 },
@@ -103,7 +103,7 @@ isPublished: {
 );
 
 // Optional: Add indexing for performance (searching tags or uploader-based)
-videoSchema.index({ title: "text", tags: 1 });
+videoSchema.index({ title: "text" });
 
 const Video = mongoose.model("Video", videoSchema);
 

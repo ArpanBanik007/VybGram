@@ -84,6 +84,21 @@ function UpperFeedpage() {
     }
   };
 
+  // video Section
+  const [selectedVideo, setSelectedVideo] = useState(null);
+  const [previewVideo, setPreviewVideo] = useState(null);
+
+  const handleVideoSelect = (e) => {
+    const file = e.target.files[0];
+
+    if (file) {
+      setSelectedVideo(file);
+
+      const previewURL = URL.createObjectURL(file);
+      setPreviewVideo(previewURL);
+    }
+  };
+
   return (
     <div className="flex justify-center w-full mt-2">
       <div className="w-full max-w-md md:max-w-lg lg:max-w-xl bg-cyan-400 rounded-xl p-3 shadow-md mx-auto">

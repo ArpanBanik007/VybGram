@@ -19,7 +19,7 @@ const router = Router();
 
 // ✅ Create a new video
 router.post(
-  "/",
+  "/create",
   verifyJWT,
   upload.fields([
     { name: "videoUrl", maxCount: 1 },

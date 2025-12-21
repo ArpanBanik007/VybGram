@@ -3,6 +3,7 @@ import {User} from "../models/user.models.js"
 import ApiError from "../utils/ApiError.js"
 import ApiResponse from "../utils/ApiResponse.js"
 import { uploadOnCloudinary } from "../utils/cloudinary.js"
+ import { uploadVideoOnCloudinary } from "../utils/cloudinary.video.js"
 import Video from "../models/video.model.js"
 import { deleteFromCloudinary } from "../utils/deleteFromCloudynary.js"
 import { getVideoDurationInSeconds } from "get-video-duration"
@@ -10,69 +11,55 @@ import escapeStringRegexp from 'escape-string-regexp';
 import fs from "fs"
 import { View } from "../models/views.model.js"
 import Like from "../models/likes.models.js"
+import { log } from "console"
 
- const createVideo = asyncHandler(async (req, res) => {
+
+const createVideo = asyncHandler(async (req, res) => {
   const { title, description, tags = [], category, isPublished } = req.body;
   const userId = req.user?._id;
 
-  // ✅ Authentication check
   if (!userId) throw new ApiError(401, "Unauthorized access");
-
-  const user = await User.findById(userId).select("_id");
-  if (!user) throw new ApiError(401, "Authentication failed");
-
-  // ✅ Input validations
   if (!title?.trim()) throw new ApiError(400, "Title is required");
   if (!description?.trim()) throw new ApiError(400, "Description is required");
-  if (description.length > 1000) throw new ApiError(400, "Description must be under 1000 characters");
   if (!category?.trim()) throw new ApiError(400, "Category is required");
 
-  if (!Array.isArray(tags) || tags.some(tag => typeof tag !== "string")) {
-    throw new ApiError(400, "Tags must be an array of strings");
-  }
-
-  const publishStatus = typeof isPublished === "boolean" ? isPublished : false;
-
-  // ✅ Files extraction
   const videoFile = req.files?.videoUrl?.[0];
   const thumbnailFile = req.files?.thumbnail?.[0];
 
-  if (!videoFile?.path) throw new ApiError(400, "Video file is required");
- const allowedVideoTypes = ["video/mp4", "video/webm", "video/ogg", "video/mkv"];
-  if (!allowedVideoTypes.includes(videoFile.mimetype)) {
-    fs.unlinkSync(videoFile.path); 
-    throw new ApiError(400, "Only video files (mp4, webm, ogg, mkv) are allowed");
+  if (!videoFile?.path) {
+    throw new ApiError(400, "Video file is required");
   }
 
-  const videoPath = videoFile.path;
-  const thumbnailPath = thumbnailFile?.path;
-
-  const durationInSeconds = await getVideoDurationInSeconds(videoPath);
-  if (durationInSeconds > 180) {
-    fs.unlinkSync(videoPath);
-    throw new ApiError(400, "Video must be under 3 minutes");
-  }
   // ✅ Upload to Cloudinary
-  const [uploadedVideo, uploadedThumbnail] = await Promise.all([
-    uploadOnCloudinary(videoPath, "videos/shorts"),
-    thumbnailPath ? uploadOnCloudinary(thumbnailPath, "thumbnails") : null,
-  ]);
+  const uploadedVideo = await uploadOnCloudinary(
+    videoFile.path,
+    "videos/shorts",
+    "video"
+  );
 
-  // Delete local files after upload
-  fs.unlink(videoPath, () => {});
-  if (thumbnailPath) fs.unlink(thumbnailPath, () => {});
+  const uploadedThumbnail = thumbnailFile
+    ? await uploadOnCloudinary(thumbnailFile.path, "thumbnails", "image")
+    : null;
 
-  if (!uploadedVideo?.url) throw new ApiError(500, "Video upload failed");
+  if (!uploadedVideo?.url) {
+    throw new ApiError(500, "Video upload failed");
+  }
 
-  // ✅ Save video document
+  // ✅ DELETE FILES AFTER SUCCESS
+  if (fs.existsSync(videoFile.path)) fs.unlinkSync(videoFile.path);
+  if (thumbnailFile?.path && fs.existsSync(thumbnailFile.path)) {
+    fs.unlinkSync(thumbnailFile.path);
+  }
+
   const newVideo = await Video.create({
     title: title.trim(),
     description: description.trim(),
     tags,
     category: category.trim(),
-    videoUrl: uploadedVideo.url,
+    videourl: uploadedVideo.url,
     thumbnail: uploadedThumbnail?.url || "",
-    isPublished: publishStatus,
+    isPublished: Boolean(isPublished),
+    userId,
     uploadedBy: userId,
     createdBy: userId,
   });
@@ -81,8 +68,6 @@ import Like from "../models/likes.models.js"
     .status(201)
     .json(new ApiResponse(201, newVideo, "Video uploaded successfully"));
 });
-
-
 
 const updateVideo = asyncHandler(async (req, res) => {
   const { videoId } = req.params;
@@ -214,40 +199,30 @@ const deleteVideo = asyncHandler(async (req, res) => {
 });
 
 
-
-  const getShortsFeed = asyncHandler(async (req, res) => {
-  const {
-    lastVideoId,
-    limit = 10,
-    search = "",
-    category = "", // 🔥 added filter
-  } = req.query;
+const getShortsFeed = asyncHandler(async (req, res) => {
+  const { lastVideoId, limit = 10, search = "", category = "" } = req.query;
 
   const parsedLimit = Math.min(Math.max(parseInt(limit), 1), 50);
 
   const query = {
     isPublished: true,
-    isShort: true,
+   
   };
 
-  // 🔍 Search by title, tags or creator.username (optional)
   if (search.trim() !== "") {
     const escapedSearch = escapeStringRegexp(search.trim());
     const searchRegex = new RegExp(escapedSearch, "i");
 
     query.$or = [
       { title: { $regex: searchRegex } },
-      { tags: { $in: [searchRegex] } },
-      { "creator.username": { $regex: searchRegex } }, // only if populated
+      
     ];
   }
 
-  // 🎯 Filter by category
   if (category.trim() !== "") {
-    query.category = category.trim(); // optional: convert to lowercase
+    query.category = category.trim();
   }
 
-  // ⏳ Pagination
   if (lastVideoId) {
     const lastVideo = await Video.findById(lastVideoId).select("createdAt");
     if (lastVideo) {
@@ -258,13 +233,15 @@ const deleteVideo = asyncHandler(async (req, res) => {
   const videos = await Video.find(query)
     .sort({ createdAt: -1 })
     .limit(parsedLimit)
-    .select("title url thumbnail views createdAt category tags creator")
-    .populate("creator", "username avatar")
+    .select(
+      "title videourl thumbnail views createdAt category tags createdBy"
+    )
+    .populate("createdBy", "username avatar")
     .lean();
 
   return res.status(200).json(
-    new ApiResponse(200, { videos }, "Filtered shorts feed loaded successfully")
-  );
+    new ApiResponse(200, { videos }, "Shorts feed loaded successfully")
+  );
 });
 
 

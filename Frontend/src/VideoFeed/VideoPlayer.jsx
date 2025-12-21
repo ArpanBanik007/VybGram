@@ -1,136 +1,149 @@
-import React, { useState } from "react";
+import { useEffect, useState } from "react";
+import axios from "axios";
 import ReactPlayer from "react-player";
-import myVideo from "../assets/myvideo.mp4";
-import { RiAccountCircleFill } from "react-icons/ri";
-import { AiFillLike, AiFillDislike } from "react-icons/ai";
-import { FaComment, FaShareNodes } from "react-icons/fa6";
-import { FaBookmark } from "react-icons/fa";
 import { FaHeart } from "react-icons/fa";
 import { IoMdHeartDislike } from "react-icons/io";
+import { FaComment, FaShareNodes } from "react-icons/fa6";
+import { PiDotsThreeBold } from "react-icons/pi";
+import { RiAccountCircleFill } from "react-icons/ri";
+import { FaBookmark } from "react-icons/fa";
 
 function VideoPlayer() {
-  const [followedUsers, setFollowedUsers] = useState([]); // ✅ Track follow state
+  const [followedUsers, setFollowedUsers] = useState([]);
+  const [videos, setVideos] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const videos = [
-    {
-      id: 1,
-      username: "arpanbanik007",
-      time: "1d ago",
-      text: "My new painting 🎨",
-      videoUrl: myVideo,
-    },
-    {
-      id: 2,
-      username: "arpanbanik007",
-      time: "2d ago",
-      text: "Chilling with friends 😎",
-      videoUrl: myVideo,
-    },
-    {
-      id: 3,
-      username: "arpanbanik007",
-      time: "3d ago",
-      text: "Nature vibes 🌿",
-      videoUrl: myVideo,
-    },
-    {
-      id: 4,
-      username: "arpanbanik007",
-      time: "4d ago",
-      text: "New artwork 🖌️",
-      videoUrl: myVideo,
-    },
-    {
-      id: 5,
-      username: "arpanbanik007",
-      time: "5d ago",
-      text: "Travel diaries ✈️",
-      videoUrl: "https://www.w3schools.com/html/mov_bbb.mp4", // ✅ YouTube short link
-    },
-  ];
+  // For storing durations of videos
+  const [videoDurations, setVideoDurations] = useState({});
 
-  // ✅ Toggle follow/unfollow
+  // Fetch videos on mount
+  useEffect(() => {
+    const fetchFeedVideos = async () => {
+      try {
+        const res = await axios.get(
+          "http://localhost:8000/api/v1/videos/feed",
+          { withCredentials: true }
+        );
+        console.log("API response:", res.data);
+        setVideos(res.data?.data?.videos || []);
+      } catch (error) {
+        console.error("Failed to fetch videos:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchFeedVideos();
+  }, []);
+
+  // Toggle follow/unfollow
   const toggleFollow = (username) => {
-    setFollowedUsers(
-      (prev) =>
-        prev.includes(username)
-          ? prev.filter((u) => u !== username) // unfollow
-          : [...prev, username] // follow
+    setFollowedUsers((prev) =>
+      prev.includes(username)
+        ? prev.filter((u) => u !== username)
+        : [...prev, username]
     );
   };
 
-  // ✅ Helper to detect if ReactPlayer should be used
-  const isReactPlayable = (url) =>
-    url.includes("youtube.com") ||
-    url.includes("youtu.be") ||
-    url.includes("cloudinary.com");
+  // Check if URL is playable by ReactPlayer
+  const isReactPlayable = (url) => {
+    if (!url) return false;
+    return (
+      url.includes("youtube.com") ||
+      url.includes("youtu.be") ||
+      url.includes("cloudinary.com")
+    );
+  };
+
+  if (loading)
+    return <p className="text-center mt-10 text-gray-600">Loading videos...</p>;
+
+  if (videos.length === 0)
+    return <p className="text-center mt-10 text-gray-600">No videos found.</p>;
 
   return (
     <div className="flex flex-col items-center mt-3 h-screen overflow-y-auto">
       {videos.map((video) => (
         <div
-          key={video.id}
-          className="bg-sky-300 sm:ml-[28%] w-[98%] h-auto sm:w-[65%] rounded-2xl mb-4"
+          key={video._id}
+          className="bg-sky-300 sm:ml-[28%] w-[98%] sm:w-[65%] h-auto rounded-2xl mb-4"
         >
           {/* Header */}
           <div className="flex items-center h-13 mb-0.5 px-4">
-            {/* Profile Icon */}
             <div className="text-5xl text-gray-700 mr-2">
-              <RiAccountCircleFill />
+              {video.createdBy?.avatar ? (
+                <img
+                  src={video.createdBy.avatar}
+                  alt="avatar"
+                  className="w-10 h-10 rounded-full object-cover"
+                />
+              ) : (
+                <RiAccountCircleFill />
+              )}
             </div>
-
-            {/* Username + Time + Follow */}
             <div className="flex flex-col">
-              <div className="flex items-center mr-2 gap-3">
-                <p className="font-bold text-gray-900">{video.username}</p>
-
-                {/* ✅ Follow/Unfollow inline with username */}
+              <div className="flex items-center gap-3">
+                <p className="font-bold text-gray-900">
+                  {video.createdBy?.username || "Unknown"}
+                </p>
                 <button
-                  onClick={() => toggleFollow(video.username)}
+                  onClick={() => toggleFollow(video.createdBy?.username)}
                   className={`font-bold ${
-                    followedUsers.includes(video.username)
+                    followedUsers.includes(video.createdBy?.username)
                       ? "text-red-600"
                       : "text-blue-600"
                   }`}
                 >
-                  {followedUsers.includes(video.username)
+                  {followedUsers.includes(video.createdBy?.username)
                     ? "Unfollow"
                     : "Follow"}
                 </button>
               </div>
-
               <p className="text-sm font-semibold text-gray-500">
-                {video.time}
+                {new Date(video.createdAt).toLocaleString() || "Unknown time"}
               </p>
             </div>
           </div>
 
-          {/* Caption */}
-          <span className="text-sm font-bold text-gray-900 ml-6">
-            {video.text}
-          </span>
+          {/* Title & Text */}
+          <div className="ml-6 mt-1">
+            {video.title && (
+              <p className="font-bold text-gray-800">{video.title}</p>
+            )}
+            {video.text && <p className="text-gray-700">{video.text}</p>}
+          </div>
 
-          {/* Video Container (Fixed Ratio 16:9) */}
+          {/* Video Player */}
           <div className="flex justify-center mt-2">
-            <div className="w-[99%] bg-black rounded-xl overflow-hidden">
-              <div className="aspect-video">
-                {isReactPlayable(video.videoUrl) ? (
-                  <ReactPlayer
-                    url={video.videoUrl}
-                    controls
-                    width="100%"
-                    height="100%"
-                  />
-                ) : (
-                  <video
-                    src={video.videoUrl}
-                    controls
-                    className="w-full h-full object-contain rounded-2xl"
-                  />
-                )}
-              </div>
+            <div
+              className="w-[99%] bg-black rounded-xl overflow-hidden relative"
+              style={{ paddingTop: "56.25%" }} // 16:9 aspect ratio
+            >
+              {isReactPlayable(video.videourl) ? (
+                <ReactPlayer
+                  url={video.videourl.replace("http://", "https://")}
+                  controls
+                  width="100%"
+                  height="100%"
+                  style={{ position: "absolute", top: 0, left: 0 }}
+                  onError={(e) => console.log("Video error:", e)}
+                  onReady={() => console.log("Video ready:", video.videourl)}
+                />
+              ) : (
+                <video
+                  src={video.videourl.replace("http://", "https://")}
+                  controls
+                  className="w-full h-full object-contain rounded-2xl absolute top-0 left-0"
+                />
+              )}
             </div>
           </div>
+
+          {/* Duration Display */}
+          {videoDurations[video._id] && (
+            <p className="ml-6 text-sm text-gray-500 mt-1">
+              Duration: {videoDurations[video._id]} sec
+            </p>
+          )}
 
           {/* Action Buttons */}
           <div className="flex justify-around py-3 text-gray-600">
@@ -138,7 +151,7 @@ function VideoPlayer() {
               <FaHeart /> Like
             </button>
             <button className="flex items-center gap-1 hover:text-red-500">
-              <IoMdHeartDislike /> DisLike
+              <IoMdHeartDislike /> Dislike
             </button>
             <button className="flex items-center gap-1 hover:text-green-500">
               <FaComment /> Comment

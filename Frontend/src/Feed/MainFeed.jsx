@@ -3,6 +3,7 @@ import axios from "axios";
 import { FaHeart } from "react-icons/fa";
 import { IoMdHeartDislike } from "react-icons/io";
 import { FaComment, FaShareNodes } from "react-icons/fa6";
+import { PiDotsThreeBold } from "react-icons/pi";
 
 function MainFeed() {
   const [posts, setPosts] = useState([]);
@@ -14,7 +15,6 @@ function MainFeed() {
         const res = await axios.get("http://localhost:8000/api/v1/posts/feed", {
           withCredentials: true,
         });
-        // ✅ backend structure অনুযায়ী posts array নাও
         setPosts(res.data?.data?.posts || []);
       } catch (error) {
         console.error("Failed to fetch posts:", error);
@@ -49,27 +49,43 @@ function MainFeed() {
           className="bg-cyan-200 w-full max-w-md md:max-w-lg lg:max-w-xl 
                     mt-2 mx-auto border rounded-xl shadow-md mb-6"
         >
-          <div className="flex items-center p-3">
-            <img
-              src={post?.createdBy?.avatar || "https://via.placeholder.com/40"}
-              alt="avatar"
-              className="h-10 w-10 rounded-full border"
-            />
-            <div className="ml-3">
-              <h3 className="font-semibold">
-                {post?.createdBy?.username || "Unknown"}
-              </h3>
+          {/* Top Section */}
+          <div className="flex items-center justify-between p-3">
+            {/* Left: Avatar + Name + Date */}
+            <div className="flex items-center">
+              <img
+                src={
+                  post?.createdBy?.avatar || "https://via.placeholder.com/40"
+                }
+                alt="avatar"
+                className="h-10 w-10 rounded-full border"
+              />
 
-              <p className="text-sm text-gray-700">
-                {new Date(post.createdAt).toLocaleString()}
-              </p>
+              <div className="ml-3">
+                <h3 className="font-semibold">
+                  {post?.createdBy?.username || "Unknown"}
+                </h3>
+                <p className="text-sm text-gray-700">
+                  {new Date(post.createdAt).toLocaleString()}
+                </p>
+              </div>
+            </div>
+
+            {/* Right: Follow Button + 3 dots */}
+            <div className="flex items-center gap-3 mb-2">
+              <button className="text-blue-600 font-semibold hover:underline">
+                Follow
+              </button>
+              <PiDotsThreeBold className="text-2xl text-gray-600 hover:text-black cursor-pointer" />
             </div>
           </div>
 
+          {/* Post Text + Post Media */}
           <div className="px-3 pb-3">
             {post.title && (
               <p className="mb-2 font-semibold text-black">{post.title}</p>
             )}
+
             {post.posturl && (
               <img
                 src={post.posturl}
@@ -79,6 +95,7 @@ function MainFeed() {
             )}
           </div>
 
+          {/* Bottom Buttons */}
           <div className="border-t flex justify-around py-2 text-gray-600 text-sm">
             <button className="flex items-center gap-1 hover:text-red-500">
               <FaHeart className="text-base" />

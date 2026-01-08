@@ -13,7 +13,6 @@ import { View } from "../models/views.model.js"
 import Like from "../models/likes.models.js"
 import { log } from "console"
 
-
 const createVideo = asyncHandler(async (req, res) => {
   const { title, description, tags = [], category, isPublished } = req.body;
   const userId = req.user?._id;
@@ -24,31 +23,29 @@ const createVideo = asyncHandler(async (req, res) => {
   if (!category?.trim()) throw new ApiError(400, "Category is required");
 
   const videoFile = req.files?.videoUrl?.[0];
-  const thumbnailFile = req.files?.thumbnail?.[0];
+  const thumbnailFile = req.files?.thumbnail?.[0] || null;
 
+  console.log(videoFile)
+  
   if (!videoFile?.path) {
     throw new ApiError(400, "Video file is required");
   }
 
-  // ✅ Upload to Cloudinary
-  const uploadedVideo = await uploadOnCloudinary(
-    videoFile.path,
-    "videos/shorts",
-    "video"
-  );
+  // ✅ Upload video
+  const uploadedVideo = await uploadVideoOnCloudinary(videoFile.path);
 
-  const uploadedThumbnail = thumbnailFile
-    ? await uploadOnCloudinary(thumbnailFile.path, "thumbnails", "image")
-    : null;
+  console.log(uploadedVideo.url)
 
-  if (!uploadedVideo?.url) {
+  if (!uploadedVideo?.secure_url) {
     throw new ApiError(500, "Video upload failed");
   }
 
-  // ✅ DELETE FILES AFTER SUCCESS
-  if (fs.existsSync(videoFile.path)) fs.unlinkSync(videoFile.path);
-  if (thumbnailFile?.path && fs.existsSync(thumbnailFile.path)) {
-    fs.unlinkSync(thumbnailFile.path);
+  // ✅ Upload thumbnail (optional)
+  let uploadedThumbnail = null;
+  if (thumbnailFile?.path) {
+    uploadedThumbnail = await uploadOnCloudinary(
+      thumbnailFile.path
+    );
   }
 
   const newVideo = await Video.create({
@@ -56,8 +53,8 @@ const createVideo = asyncHandler(async (req, res) => {
     description: description.trim(),
     tags,
     category: category.trim(),
-    videourl: uploadedVideo.url,
-    thumbnail: uploadedThumbnail?.url || "",
+    videourl: uploadedVideo.secure_url,
+    thumbnail: uploadedThumbnail?.secure_url || "",
     isPublished: Boolean(isPublished),
     userId,
     uploadedBy: userId,
@@ -68,6 +65,7 @@ const createVideo = asyncHandler(async (req, res) => {
     .status(201)
     .json(new ApiResponse(201, newVideo, "Video uploaded successfully"));
 });
+
 
 const updateVideo = asyncHandler(async (req, res) => {
   const { videoId } = req.params;

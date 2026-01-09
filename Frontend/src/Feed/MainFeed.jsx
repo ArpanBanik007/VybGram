@@ -8,6 +8,8 @@ import { PiDotsThreeBold } from "react-icons/pi";
 function MainFeed() {
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [bottonActive, setbottonActive] = useState(true);
+  const [bottonInactive, setbottonInactive] = useState(false);
 
   useEffect(() => {
     const fetchFeedPost = async () => {
@@ -24,6 +26,48 @@ function MainFeed() {
     };
     fetchFeedPost();
   }, []);
+
+  // Like toggle handler
+  const handleLike = async (postId) => {
+    setPosts((prevPosts) =>
+      prevPosts.map((post) => {
+        if (post._id === postId) {
+          let likes = post.likes || 0;
+          let dislikes = post.dislikes || 0;
+          let userLiked = post.userLiked;
+          let userDisliked = post.userDisliked;
+
+          if (userLiked) {
+            // Unlike
+            likes -= 1;
+            userLiked = false;
+          } else {
+            // Like
+            likes += 1;
+            userLiked = true;
+            // remove dislike if exists
+            if (userDisliked) {
+              dislikes -= 1;
+              userDisliked = false;
+            }
+          }
+
+          return { ...post, likes, dislikes, userLiked, userDisliked };
+        }
+        return post;
+      })
+    );
+
+    try {
+      await axios.post(
+        `http://localhost:8000/api/v1/posts/${postId}/like`,
+        {},
+        { withCredentials: true }
+      );
+    } catch (error) {
+      console.error("Failed to like post:", error);
+    }
+  };
 
   if (loading) {
     return (
@@ -97,11 +141,17 @@ function MainFeed() {
 
           {/* Bottom Buttons */}
           <div className="border-t flex justify-around py-2 text-gray-600 text-sm">
-            <button className="flex items-center gap-1 hover:text-red-500">
+            {/* Like */}
+            <button
+              className={`flex items-center gap-1 ${
+                post.userLiked ? "text-red-500" : "text-gray-600"
+              }`}
+              onClick={() => handleLike(post._id)}
+            >
               <FaHeart className="text-base" />
               <span>Like</span>
               <span className="text-xs text-gray-800 font-semibold ml-1">
-                {post.likes || 0}
+                {post.likes}
               </span>
             </button>
 

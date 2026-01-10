@@ -181,9 +181,28 @@ const getPostsFeed = asyncHandler(async (req, res) => {
     .populate("createdBy", "username fullName avatar")
     .lean();
 
+
+
+
+   const postIds=posts.map(p=>p._id) ;
+
+
+  const [userLikes, userDislikes] = await Promise.all([
+  Like.find({ user: userId, post: { $in: postIds } }).lean(),
+  Dislike.find({ user: userId, post: { $in: postIds } }).lean(),
+]);
+
+
+// 3. Attach userLiked / userDisliked to each post
+  const response = posts.map(post => ({
+    ...post,
+    userLiked: userLikes.some(l => l.post.toString() === post._id.toString()),
+    userDisliked: userDislikes.some(d => d.post.toString() === post._id.toString()),
+  }));
+
   return res
     .status(200)
-    .json(new ApiResponse(200, { posts }, "Filtered posts feed loaded successfully"));
+    .json(new ApiResponse(200, { posts , response }, "Filtered posts feed loaded successfully"));
 });
 
 /**

@@ -155,7 +155,7 @@ const deletePost = asyncHandler(async (req, res) => {
 const getPostsFeed = asyncHandler(async (req, res) => {
   const { lastPostId, limit = 10, search = "" } = req.query;
   const parsedLimit = Math.min(Math.max(parseInt(limit), 1), 50);
-
+const userId= req.user?._id;
   const query = {  }; // or {} for testing
 
   if (search.trim() !== "") {

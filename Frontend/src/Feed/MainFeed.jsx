@@ -29,34 +29,35 @@ function MainFeed() {
 
   // Like toggle handler
   const handleLike = async (postId) => {
-    setPosts((prevPosts) =>
-      prevPosts.map((post) => {
-        if (post._id === postId) {
-          let likes = post.likes || 0;
-          let dislikes = post.dislikes || 0;
-          let userLiked = post.userLiked;
-          let userDisliked = post.userDisliked;
+    let previousPosts;
 
-          if (userLiked) {
-            // Unlike
-            likes -= 1;
-            userLiked = false;
-          } else {
-            // Like
-            likes += 1;
-            userLiked = true;
-            // remove dislike if exists
-            if (userDisliked) {
-              dislikes -= 1;
-              userDisliked = false;
-            }
+    setPosts((prevPosts) => {
+      previousPosts = prevPosts;
+
+      return prevPosts.map((post) => {
+        if (post._id !== postId) return post;
+
+        let likes = post.likes || 0;
+        let dislikes = post.dislikes || 0;
+        let userLiked = post.userLiked;
+        let userDisliked = post.userDisliked;
+
+        if (userLiked) {
+          likes = Math.max(likes - 1, 0);
+          userLiked = false;
+        } else {
+          likes += 1;
+          userLiked = true;
+
+          if (userDisliked) {
+            dislikes = Math.max(dislikes - 1, 0);
+            userDisliked = false;
           }
-
-          return { ...post, likes, dislikes, userLiked, userDisliked };
         }
-        return post;
-      })
-    );
+
+        return { ...post, likes, dislikes, userLiked, userDisliked };
+      });
+    });
 
     try {
       await axios.post(
@@ -65,7 +66,8 @@ function MainFeed() {
         { withCredentials: true }
       );
     } catch (error) {
-      console.error("Failed to like post:", error);
+      console.error("Like failed, rolling back");
+      setPosts(previousPosts);
     }
   };
 

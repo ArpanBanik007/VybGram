@@ -266,12 +266,19 @@ const togglePostLike = asyncHandler(async (req, res) => {
     // remove dislike if exists
     const disliked = await Dislike.deleteOne({ user: userId, post: postId });
     if (disliked.deletedCount) {
-      await Post.findByIdAndUpdate(postId, { $inc: { dislikes: -1 } });
+      // dislikes কখনো negative হবে না
+      await Post.findOneAndUpdate(
+        { _id: postId, dislikes: { $gt: 0 } },
+        { $inc: { dislikes: -1 } }
+      );
     }
 
-    await Post.findByIdAndUpdate(postId, { $inc: { likes: 1 } });
+    // likes increase
+    await Post.findOneAndUpdate(
+      { _id: postId },
+      { $inc: { likes: 1 } }
+    );
 
-    // ✅ ApiResponse
     return res
       .status(200)
       .json(new ApiResponse(200, { liked: true }, "Post liked successfully"));
@@ -280,7 +287,12 @@ const togglePostLike = asyncHandler(async (req, res) => {
     // duplicate → UNLIKE
     if (err.code === 11000) {
       await Like.deleteOne({ user: userId, post: postId });
-      await Post.findByIdAndUpdate(postId, { $inc: { likes: -1 } });
+
+      // likes decrease, but never below 0
+      await Post.findOneAndUpdate(
+        { _id: postId, likes: { $gt: 0 } },
+        { $inc: { likes: -1 } }
+      );
 
       return res
         .status(200)
@@ -289,6 +301,7 @@ const togglePostLike = asyncHandler(async (req, res) => {
     throw err;
   }
 });
+
 
 
 

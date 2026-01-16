@@ -152,6 +152,7 @@ const deletePost = asyncHandler(async (req, res) => {
 /**
  * Get Posts Feed
  */
+
 const getPostsFeed = asyncHandler(async (req, res) => {
   const { lastPostId, limit = 10, search = "" } = req.query;
   const parsedLimit = Math.min(Math.max(parseInt(limit), 1), 50);
@@ -202,8 +203,68 @@ const userId= req.user?._id;
 
   return res
     .status(200)
-    .json(new ApiResponse(200, { posts , response }, "Filtered posts feed loaded successfully"));
+    .json(new ApiResponse(200, { posts: response}, "Filtered posts feed loaded successfully"));
 });
+
+
+
+
+// const getFeedposts = asyncHandler(async (req, res) => {
+//   const userId = req.user._id; // logged-in user
+
+//   const posts = await Post.aggregate([
+//     {
+//       $lookup: {
+//         from: "likes",
+//         let: { postId: "$_id" },
+//         pipeline: [
+//           {
+//             $match: {
+//               $expr: {
+//                 $and: [
+//                   { $eq: ["$post", "$$postId"] },
+//                   { $eq: ["$user", userId] }
+//                 ]
+//               }
+//             }
+//           }
+//         ],
+//         as: "userLike"
+//       }
+//     },
+//     {
+//       $lookup: {
+//         from: "dislikes",
+//         let: { postId: "$_id" },
+//         pipeline: [
+//           {
+//             $match: {
+//               $expr: {
+//                 $and: [
+//                   { $eq: ["$post", "$$postId"] },
+//                   { $eq: ["$user", userId] }
+//                 ]
+//               }
+//             }
+//           }
+//         ],
+//         as: "userDislike"
+//       }
+//     },
+//     {
+//       $addFields: {
+//         userLiked: { $gt: [{ $size: "$userLike" }, 0] },
+//         userDisliked: { $gt: [{ $size: "$userDislike" }, 0] }
+//       }
+//     }
+//   ]);
+
+//   return res
+//     .status(200)
+//     .json(new ApiResponse(200, { posts }, "Feed fetched successfully"));
+// });
+
+
 
 /**
  * Get Single Post

@@ -35,7 +35,7 @@ router.route("/").post(
 
 
 // ✅ Get posts feed (search, pagination)
-router.get("/feed", getPostsFeed);
+router.get("/feed",verifyJWT,getPostsFeed);
 
 
 router.route("/my-posts").get(verifyJWT,getOwnAllPosts)

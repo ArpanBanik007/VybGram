@@ -153,6 +153,8 @@ const deletePost = asyncHandler(async (req, res) => {
  * Get Posts Feed
  */
 
+
+
 const getPostsFeed = asyncHandler(async (req, res) => {
   const { lastPostId, limit = 10, search = "" } = req.query;
   const parsedLimit = Math.min(Math.max(parseInt(limit), 1), 50);
@@ -193,6 +195,8 @@ const userId= req.user?._id;
   Dislike.find({ user: userId, post: { $in: postIds } }).lean(),
 ]);
 
+console.log("Likes",userLikes)
+console.log("Dislikes",userDislikes)
 
 // 3. Attach userLiked / userDisliked to each post
   const response = posts.map(post => ({
@@ -205,6 +209,8 @@ const userId= req.user?._id;
     .status(200)
     .json(new ApiResponse(200, { posts: response}, "Filtered posts feed loaded successfully"));
 });
+
+
 
 
 
@@ -313,57 +319,105 @@ const getSinglePost = asyncHandler(async (req, res) => {
 
 // New one 
 
-const togglePostLike = asyncHandler(async (req, res) => {
-  const userId = req.user?._id;
-  const { postId } = req.params;
+// const togglePostLike = asyncHandler(async (req, res) => {
+//   const userId = req.user?._id;
+//   const { postId } = req.params;
 
-  if (!userId || !postId)
-    throw new ApiError(400, "PostId or UserId not found");
+//   if (!userId || !postId)
+//     throw new ApiError(400, "PostId or UserId not found");
+
+//   try {
+//     // TRY LIKE
+//     await Like.create({ user: userId, post: postId });
+
+//     // remove dislike if exists
+//     const disliked = await Dislike.deleteOne({ user: userId, post: postId });
+//     if (disliked.deletedCount) {
+//       // dislikes কখনো negative হবে না
+//       await Post.findOneAndUpdate(
+//         { _id: postId, dislikes: { $gt: 0 } },
+//         { $inc: { dislikes: -1 } }
+//       );
+//     }
+
+//     // likes increase
+//     await Post.findOneAndUpdate(
+//       { _id: postId },
+//       { $inc: { likes: 1 } }
+//     );
+
+//     return res
+//       .status(200)
+//       .json(new ApiResponse(200, { liked: true }, "Post liked successfully"));
+
+//   } catch (err) {
+//     // duplicate → UNLIKE
+//     if (err.code === 11000) {
+//       await Like.deleteOne({ user: userId, post: postId });
+
+//       // likes decrease, but never below 0
+//       await Post.findOneAndUpdate(
+//         { _id: postId, likes: { $gt: 0 } },
+//         { $inc: { likes: -1 } }
+//       );
+
+//       return res
+//         .status(200)
+//         .json(new ApiResponse(200, { liked: false }, "Post unliked successfully"));
+//     }
+//     throw err;
+//   }
+// });
+
+
+
+
+
+
+
+ const togglePostLike = asyncHandler(async (req, res) => {
+  const userId = req.user._id;
+  const { postId } = req.params;
 
   try {
     // TRY LIKE
     await Like.create({ user: userId, post: postId });
 
     // remove dislike if exists
-    const disliked = await Dislike.deleteOne({ user: userId, post: postId });
-    if (disliked.deletedCount) {
-      // dislikes কখনো negative হবে না
-      await Post.findOneAndUpdate(
+    const removed = await Dislike.deleteOne({ user: userId, post: postId });
+    if (removed.deletedCount) {
+      await Post.updateOne(
         { _id: postId, dislikes: { $gt: 0 } },
         { $inc: { dislikes: -1 } }
       );
     }
 
-    // likes increase
-    await Post.findOneAndUpdate(
+    await Post.updateOne(
       { _id: postId },
       { $inc: { likes: 1 } }
     );
 
-    return res
-      .status(200)
-      .json(new ApiResponse(200, { liked: true }, "Post liked successfully"));
+    return res.json(
+      new ApiResponse(200, { liked: true }, "Post liked")
+    );
 
   } catch (err) {
     // duplicate → UNLIKE
     if (err.code === 11000) {
       await Like.deleteOne({ user: userId, post: postId });
 
-      // likes decrease, but never below 0
-      await Post.findOneAndUpdate(
+      await Post.updateOne(
         { _id: postId, likes: { $gt: 0 } },
         { $inc: { likes: -1 } }
       );
 
-      return res
-        .status(200)
-        .json(new ApiResponse(200, { liked: false }, "Post unliked successfully"));
+      return res.json(
+        new ApiResponse(200, { liked: false }, "Post unliked")
+      );
     }
     throw err;
   }
 });
-
-
 
 
 
@@ -534,8 +588,8 @@ export {
   createpost,
   updatePost,
   deletePost,
-  getPostsFeed,
   getSinglePost,
+  getPostsFeed,
   togglePostLike,
   togglePostDislike,
   addPostViews,

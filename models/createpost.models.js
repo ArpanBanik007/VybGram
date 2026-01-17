@@ -85,6 +85,7 @@ const postSchema = new mongoose.Schema(
 // ✅ Text index for search (title + tags)
 postSchema.index({ title: "text", tags: "text" });
 
+
 const Post = mongoose.model("Post", postSchema);
 
 export default Post;

@@ -8,44 +8,50 @@ const likeSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
-    video: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Video",
-      default: null,
-      index: true,
-    },
+
+    // Either post OR video (never both)
     post: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Post",
       default: null,
       index: true,
     },
-    createdAt: {
-      type: Date,
-      default: Date.now,
-      immutable: true,
+
+    video: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Video",
+      default: null,
+      index: true,
     },
   },
   {
-    timestamps: false,
+    timestamps: true,
     versionKey: false,
   }
 );
 
-// Indexes for unique constraints
-likeSchema.index({ user: 1, video: 1 }, { unique: true, sparse: true });
-likeSchema.index({ user: 1, post: 1 }, { unique: true, sparse: true });
+// 🔒 Unique constraints (VERY IMPORTANT)
+likeSchema.index(
+  { user: 1, post: 1 },
+  { unique: true, sparse: true }
+);
 
+likeSchema.index(
+  { user: 1, video: 1 },
+  { unique: true, sparse: true }
+);
 
-likeSchema.statics.isLiked = async function (userId, { videoId = null, postId = null }) {
+// ✅ Utility (optional but good)
+likeSchema.statics.isLiked = async function (
+  userId,
+  { postId = null, videoId = null }
+) {
   const filter = { user: userId };
-
-  if (videoId) filter.video = videoId;
   if (postId) filter.post = postId;
+  if (videoId) filter.video = videoId;
 
-  return await this.exists(filter);
+  return Boolean(await this.exists(filter));
 };
 
 const Like = mongoose.model("Like", likeSchema);
-
 export default Like;

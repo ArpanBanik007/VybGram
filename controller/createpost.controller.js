@@ -153,21 +153,21 @@ const deletePost = asyncHandler(async (req, res) => {
  * Get Posts Feed
  */
 
-
-
 const getPostsFeed = asyncHandler(async (req, res) => {
   const userId = new mongoose.Types.ObjectId(req.user._id);
 
   const posts = await Post.aggregate([
+    // 🔹 Only unpublished posts (change if needed)
     { $match: { isPublished: false } },
+
     { $sort: { createdAt: -1 } },
 
     // 🟣 POPULATE createdBy (User)
     {
       $lookup: {
-        from: "users",               // 👈 User collection
-        localField: "createdBy",     // Post.createdBy
-        foreignField: "_id",          // User._id
+        from: "users",
+        localField: "createdBy",
+        foreignField: "_id",
         as: "createdBy"
       }
     },
@@ -180,7 +180,7 @@ const getPostsFeed = asyncHandler(async (req, res) => {
       }
     },
 
-    // 🔵 USER LIKE
+    // 🔵 USER LIKE (logged-in user)
     {
       $lookup: {
         from: "likes",
@@ -191,8 +191,7 @@ const getPostsFeed = asyncHandler(async (req, res) => {
               $expr: {
                 $and: [
                   { $eq: ["$post", "$$postId"] },
-                  { $eq: ["$user", "$$userId"] },
-                  { $ne: ["$post", null] }
+                  { $eq: ["$user", "$$userId"] }
                 ]
               }
             }
@@ -202,7 +201,7 @@ const getPostsFeed = asyncHandler(async (req, res) => {
       }
     },
 
-    // 🔴 USER DISLIKE
+    // 🔴 USER DISLIKE (logged-in user)
     {
       $lookup: {
         from: "dislikes",
@@ -213,8 +212,7 @@ const getPostsFeed = asyncHandler(async (req, res) => {
               $expr: {
                 $and: [
                   { $eq: ["$post", "$$postId"] },
-                  { $eq: ["$user", "$$userId"] },
-                  { $ne: ["$post", null] }
+                  { $eq: ["$user", "$$userId"] }
                 ]
               }
             }
@@ -232,34 +230,36 @@ const getPostsFeed = asyncHandler(async (req, res) => {
       }
     },
 
-    // 🧹 FINAL SHAPE
-{
-  $project: {
-    title: 1,
-    posturl: 1,
-    views: 1,
-    createdAt: 1,
-    tags: 1,
+    // 🧹 FINAL RESPONSE SHAPE
+    {
+      $project: {
+        title: 1,
+        posturl: 1,
+        views: 1,
+        createdAt: 1,
+        tags: 1,
 
-    likes: 1,        // ✅ ADD THIS
-    dislikes: 1,     // ✅ ADD THIS
+        // ✅ IMPORTANT: like count fix
+        likes: 1,
+        dislikes: 1,
 
-    createdBy: {
-      _id: 1,
-      username: 1,
-      fullName: 1,
-      avatar: 1
-    },
+        createdBy: {
+          _id: 1,
+          username: 1,
+          fullName: 1,
+          avatar: 1
+        },
 
-    userLiked: 1,
-    userDisliked: 1
-  }
-}
-
+        userLiked: 1,
+        userDisliked: 1
+      }
+    }
   ]);
 
   res.status(200).json({ posts });
 });
+
+
 
 // const getPostsFeed = asyncHandler(async (req, res) => {
 //   const { lastPostId, limit = 10, search = "" } = req.query;

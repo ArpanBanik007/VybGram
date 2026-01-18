@@ -10,20 +10,23 @@ function MainFeed() {
   const [loading, setLoading] = useState(true);
   const [bottonActive, setbottonActive] = useState(true);
   const [bottonInactive, setbottonInactive] = useState(false);
-
   useEffect(() => {
     const fetchFeedPost = async () => {
       try {
         const res = await axios.get("http://localhost:8000/api/v1/posts/feed", {
           withCredentials: true,
         });
-        setPosts(res.data?.data?.posts || []);
+
+        console.log("Feed response:", res.data); // 🔍 DEBUG
+
+        setPosts(res.data?.posts || []);
       } catch (error) {
         console.error("Failed to fetch posts:", error);
       } finally {
         setLoading(false);
       }
     };
+
     fetchFeedPost();
   }, []);
 
@@ -63,7 +66,7 @@ function MainFeed() {
       await axios.post(
         `http://localhost:8000/api/v1/posts/${postId}/like`,
         {},
-        { withCredentials: true }
+        { withCredentials: true },
       );
     } catch (error) {
       console.error("Like failed, rolling back");

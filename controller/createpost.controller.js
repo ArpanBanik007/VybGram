@@ -156,59 +156,165 @@ const deletePost = asyncHandler(async (req, res) => {
 
 
 const getPostsFeed = asyncHandler(async (req, res) => {
-  const { lastPostId, limit = 10, search = "" } = req.query;
-  const parsedLimit = Math.min(Math.max(parseInt(limit), 1), 50);
-const userId= req.user?._id;
-  const query = {  }; // or {} for testing
+  const userId = new mongoose.Types.ObjectId(req.user._id);
 
-  if (search.trim() !== "") {
-    const escapedSearch = escapeStringRegexp(search.trim());
-    const searchRegex = new RegExp(escapedSearch, "i");
+  const posts = await Post.aggregate([
+    { $match: { isPublished: false } },
+    { $sort: { createdAt: -1 } },
 
-    query.$or = [
-      { title: { $regex: searchRegex } },
-      { tags: { $elemMatch: { $regex: searchRegex } } },
-      { "createdBy.username": { $regex: searchRegex } },
-    ];
+    // 🟣 POPULATE createdBy (User)
+    {
+      $lookup: {
+        from: "users",               // 👈 User collection
+        localField: "createdBy",     // Post.createdBy
+        foreignField: "_id",          // User._id
+        as: "createdBy"
+      }
+    },
+
+    // 🧠 array → object
+    {
+      $unwind: {
+        path: "$createdBy",
+        preserveNullAndEmptyArrays: true
+      }
+    },
+
+    // 🔵 USER LIKE
+    {
+      $lookup: {
+        from: "likes",
+        let: { postId: "$_id", userId },
+        pipeline: [
+          {
+            $match: {
+              $expr: {
+                $and: [
+                  { $eq: ["$post", "$$postId"] },
+                  { $eq: ["$user", "$$userId"] },
+                  { $ne: ["$post", null] }
+                ]
+              }
+            }
+          }
+        ],
+        as: "userLike"
+      }
+    },
+
+    // 🔴 USER DISLIKE
+    {
+      $lookup: {
+        from: "dislikes",
+        let: { postId: "$_id", userId },
+        pipeline: [
+          {
+            $match: {
+              $expr: {
+                $and: [
+                  { $eq: ["$post", "$$postId"] },
+                  { $eq: ["$user", "$$userId"] },
+                  { $ne: ["$post", null] }
+                ]
+              }
+            }
+          }
+        ],
+        as: "userDislike"
+      }
+    },
+
+    // 🧠 BOOLEAN FLAGS
+    {
+      $addFields: {
+        userLiked: { $gt: [{ $size: "$userLike" }, 0] },
+        userDisliked: { $gt: [{ $size: "$userDislike" }, 0] }
+      }
+    },
+
+    // 🧹 FINAL SHAPE
+{
+  $project: {
+    title: 1,
+    posturl: 1,
+    views: 1,
+    createdAt: 1,
+    tags: 1,
+
+    likes: 1,        // ✅ ADD THIS
+    dislikes: 1,     // ✅ ADD THIS
+
+    createdBy: {
+      _id: 1,
+      username: 1,
+      fullName: 1,
+      avatar: 1
+    },
+
+    userLiked: 1,
+    userDisliked: 1
   }
+}
 
-  if (lastPostId) {
-    const lastPost = await Post.findById(lastPostId).select("createdAt");
-    if (lastPost) query.createdAt = { $lt: lastPost.createdAt };
-  }
+  ]);
 
-  const posts = await Post.find(query)
-    .sort({ createdAt: -1 })
-    .limit(parsedLimit)
-    .select("title posturl views createdAt tags createdBy")
-    .populate("createdBy", "username fullName avatar")
-    .lean();
-
-
-
-
-   const postIds=posts.map(p=>p._id) ;
-
-
-  const [userLikes, userDislikes] = await Promise.all([
-  Like.find({ user: userId, post: { $in: postIds } }).lean(),
-  Dislike.find({ user: userId, post: { $in: postIds } }).lean(),
-]);
-
-console.log("Likes",userLikes)
-console.log("Dislikes",userDislikes)
-
-// 3. Attach userLiked / userDisliked to each post
-  const response = posts.map(post => ({
-    ...post,
-    userLiked: userLikes.some(l => l.post.toString() === post._id.toString()),
-    userDisliked: userDislikes.some(d => d.post.toString() === post._id.toString()),
-  }));
-
-  return res
-    .status(200)
-    .json(new ApiResponse(200, { posts: response}, "Filtered posts feed loaded successfully"));
+  res.status(200).json({ posts });
 });
+
+// const getPostsFeed = asyncHandler(async (req, res) => {
+//   const { lastPostId, limit = 10, search = "" } = req.query;
+//   const parsedLimit = Math.min(Math.max(parseInt(limit), 1), 50);
+// const userId= req.user?._id;
+//   const query = {  }; // or {} for testing
+
+//   if (search.trim() !== "") {
+//     const escapedSearch = escapeStringRegexp(search.trim());
+//     const searchRegex = new RegExp(escapedSearch, "i");
+
+//     query.$or = [
+//       { title: { $regex: searchRegex } },
+//       { tags: { $elemMatch: { $regex: searchRegex } } },
+//       { "createdBy.username": { $regex: searchRegex } },
+//     ];
+//   }
+
+//   if (lastPostId) {
+//     const lastPost = await Post.findById(lastPostId).select("createdAt");
+//     if (lastPost) query.createdAt = { $lt: lastPost.createdAt };
+//   }
+
+//   const posts = await Post.find(query)
+//     .sort({ createdAt: -1 })
+//     .limit(parsedLimit)
+//     .select("title posturl views createdAt tags createdBy")
+//     .populate("createdBy", "username fullName avatar")
+//     .lean();
+
+
+
+
+//    const postIds=posts.map(p=>p._id) ;
+
+
+//   const [userLikes, userDislikes] = await Promise.all([
+//   Like.find({ user: userId, post: { $in: postIds } }).lean(),
+//   Dislike.find({ user: userId, post: { $in: postIds } }).lean(),
+// ]);
+
+// console.log("Likes",userLikes)
+// console.log("Dislikes",userDislikes)
+
+// // 3. Attach userLiked / userDisliked to each post
+//   const response = posts.map(post => ({
+//     ...post,
+//     userLiked: userLikes.some(l => l.post.toString() === post._id.toString()),
+//     userDisliked: userDislikes.some(d => d.post.toString() === post._id.toString()),
+//   }));
+
+//   return res
+//     .status(200)
+//     .json(new ApiResponse(200, { posts: response}, "Filtered posts feed loaded successfully"));
+// });
 
 
 

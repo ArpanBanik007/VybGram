@@ -9,22 +9,21 @@ const likeSchema = new mongoose.Schema(
       index: true,
     },
 
-    // Either post OR video (never both)
     post: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Post",
-      default: null,
       index: true,
     },
 
     video: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Video",
-      default: null,
       index: true,
     },
   },
-  {
+ 
+{
+
     timestamps: true,
     versionKey: false,
   }
@@ -40,6 +39,7 @@ likeSchema.index(
   { user: 1, video: 1 },
   { unique: true, sparse: true }
 );
+
 
 // ✅ Utility (optional but good)
 likeSchema.statics.isLiked = async function (

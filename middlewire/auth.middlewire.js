@@ -27,9 +27,6 @@ export const verifyJWT = asyncHandler(async (req, res, next) => {
         }
 
         req.user = user;
-
-
-       
         next();
     } catch (error) {
         console.error("JWT ERROR:", error.message); // Log actual error

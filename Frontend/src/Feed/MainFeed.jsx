@@ -8,8 +8,6 @@ import { PiDotsThreeBold } from "react-icons/pi";
 function MainFeed() {
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [bottonActive, setbottonActive] = useState(true);
-  const [bottonInactive, setbottonInactive] = useState(false);
   useEffect(() => {
     const fetchFeedPost = async () => {
       try {
@@ -17,8 +15,7 @@ function MainFeed() {
           withCredentials: true,
         });
 
-        console.log("Feed response:", res.data); // 🔍 DEBUG
-
+        console.log("Feed response:", res.data);
         setPosts(res.data?.posts || []);
       } catch (error) {
         console.error("Failed to fetch posts:", error);
@@ -32,45 +29,37 @@ function MainFeed() {
 
   // Like toggle handler
   const handleLike = async (postId) => {
-    let previousPosts;
-
-    setPosts((prevPosts) => {
-      previousPosts = prevPosts;
-
-      return prevPosts.map((post) => {
-        if (post._id !== postId) return post;
-
-        let likes = post.likes || 0;
-        let dislikes = post.dislikes || 0;
-        let userLiked = post.userLiked;
-        let userDisliked = post.userDisliked;
-
-        if (userLiked) {
-          likes = Math.max(likes - 1, 0);
-          userLiked = false;
-        } else {
-          likes += 1;
-          userLiked = true;
-
-          if (userDisliked) {
-            dislikes = Math.max(dislikes - 1, 0);
-            userDisliked = false;
-          }
-        }
-
-        return { ...post, likes, dislikes, userLiked, userDisliked };
-      });
-    });
+    console.log("CLICKED LIKE FOR:", postId);
 
     try {
-      await axios.post(
+      const res = await axios.post(
         `http://localhost:8000/api/v1/posts/${postId}/like`,
         {},
         { withCredentials: true },
       );
-    } catch (error) {
-      console.error("Like failed, rolling back");
-      setPosts(previousPosts);
+
+      const liked = res.data?.data?.liked;
+
+      if (typeof liked !== "boolean") {
+        console.error("Invalid like response");
+        return;
+      }
+
+      setPosts((prevPosts) =>
+        prevPosts.map((post) => {
+          if (post._id !== postId) return post;
+
+          const currentLikes = post.likes || 0;
+
+          return {
+            ...post,
+            userLiked: liked,
+            likes: liked ? currentLikes + 1 : Math.max(currentLikes - 1, 0), // 🚫 no negative
+          };
+        }),
+      );
+    } catch (err) {
+      console.error("Like failed", err);
     }
   };
 
@@ -151,7 +140,10 @@ function MainFeed() {
               className={`flex items-center gap-1 ${
                 post.userLiked ? "text-red-500" : "text-gray-600"
               }`}
-              onClick={() => handleLike(post._id)}
+              onClick={() => {
+                console.log("LIKE CLICKED", post._id);
+                handleLike(post._id);
+              }}
             >
               <FaHeart className="text-base" />
               <span>Like</span>

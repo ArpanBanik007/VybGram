@@ -17,6 +17,40 @@ cloudinary.config({
 // console.log("API Secret:",  process.env.CLOUDINARY_API_SECRET);
 
 
+
+const uploadOnCloudinary = async (localFilePath) => {
+    try {
+        if (!localFilePath) return null;
+
+        // Upload the file to Cloudinary
+        const response = await cloudinary.uploader.upload(localFilePath, {
+            resource_type: "auto",
+        });
+
+        // File uploaded successfully
+       // console.log("File uploaded to Cloudinary:", response.url);
+
+        // Delete the local file after successful upload
+        fs.unlinkSync(localFilePath);
+        return response;
+
+        
+    } catch (error) {
+        console.error("Cloudinary upload failed:", error);
+
+        // Attempt to delete the local file even if upload fails
+        try {
+            fs.unlinkSync(localFilePath);
+        } catch (unlinkError) {
+            console.error("Failed to delete local file:", unlinkError);
+        }
+
+        return null;
+    }
+};
+
+
+
 // const uploadOnCloudinary = async (
 //   localFilePath,
 //   folder = "",
@@ -60,23 +94,23 @@ cloudinary.config({
 
 // export { uploadOnCloudinary };
 
-const uploadOnCloudinary = async (localFilePath, folder, resourceType) => {
-  if (!localFilePath) return null;
+// const uploadOnCloudinary = async (localFilePath, folder, resourceType) => {
+//   if (!localFilePath) return null;
 
-  try {
-    const response = await cloudinary.uploader.upload(localFilePath, {
-      resource_type: resourceType,
-      folder,
-      chunk_size: 6 * 1024 * 1024,
-      timeout: 120000,
-    });
+//   try {
+//     const response = await cloudinary.uploader.upload(localFilePath, {
+//       resource_type: resourceType,
+//       folder,
+//       chunk_size: 6 * 1024 * 1024,
+//       timeout: 120000,
+//     });
 
-    return response;
+//     return response;
 
-  } catch (error) {
-    console.error("Cloudinary upload failed:", error);
-    return null;
-  }
-};
+//   } catch (error) {
+//     console.error("Cloudinary upload failed:", error);
+//     return null;
+//   }
+// };
 
  export { uploadOnCloudinary };

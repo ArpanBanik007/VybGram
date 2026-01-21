@@ -156,13 +156,11 @@ const deletePost = asyncHandler(async (req, res) => {
 const getPostsFeed = asyncHandler(async (req, res) => {
   const userId = new mongoose.Types.ObjectId(req.user._id);
 
-  const posts = await Post.aggregate([
-    // 🔹 Only unpublished posts (change if needed)
-    { $match: { isPublished: false } },
 
+
+  const posts = await Post.aggregate([
     { $sort: { createdAt: -1 } },
 
-    // 🟣 POPULATE createdBy (User)
     {
       $lookup: {
         from: "users",
@@ -171,16 +169,8 @@ const getPostsFeed = asyncHandler(async (req, res) => {
         as: "createdBy"
       }
     },
+    { $unwind: "$createdBy" },
 
-    // 🧠 array → object
-    {
-      $unwind: {
-        path: "$createdBy",
-        preserveNullAndEmptyArrays: true
-      }
-    },
-
-    // 🔵 USER LIKE (logged-in user)
     {
       $lookup: {
         from: "likes",
@@ -201,62 +191,29 @@ const getPostsFeed = asyncHandler(async (req, res) => {
       }
     },
 
-    // 🔴 USER DISLIKE (logged-in user)
-    {
-      $lookup: {
-        from: "dislikes",
-        let: { postId: "$_id", userId },
-        pipeline: [
-          {
-            $match: {
-              $expr: {
-                $and: [
-                  { $eq: ["$post", "$$postId"] },
-                  { $eq: ["$user", "$$userId"] }
-                ]
-              }
-            }
-          }
-        ],
-        as: "userDislike"
-      }
-    },
-
-    // 🧠 BOOLEAN FLAGS
     {
       $addFields: {
-        userLiked: { $gt: [{ $size: "$userLike" }, 0] },
-        userDisliked: { $gt: [{ $size: "$userDislike" }, 0] }
+        userLiked: { $gt: [{ $size: "$userLike" }, 0] }
       }
     },
 
-    // 🧹 FINAL RESPONSE SHAPE
     {
       $project: {
         title: 1,
         posturl: 1,
-        views: 1,
-        createdAt: 1,
-        tags: 1,
-
-        // ✅ IMPORTANT: like count fix
         likes: 1,
         dislikes: 1,
-
+        createdAt: 1,
         createdBy: {
-          _id: 1,
           username: 1,
-          fullName: 1,
           avatar: 1
         },
-
-        userLiked: 1,
-        userDisliked: 1
+        userLiked: 1
       }
     }
   ]);
 
-  res.status(200).json({ posts });
+  res.json({ posts });
 });
 
 
@@ -405,23 +362,41 @@ const getSinglePost = asyncHandler(async (req, res) => {
 
 
 // Old version 
-// const togglePostLike = asyncHandler(async (req, res) => {
-//   const userId = req.user?._id;
-//   const { postId } = req.params;
 
-//   if (!userId || !postId) throw new ApiError(400, "PostId or UserId not found");
+const togglePostLike = async (req, res) => {
+  const { postId } = req.params;
+  const userId = req.user._id;
 
-//   const alreadyLiked = await Like.findOne({ user: userId, post: postId });
-//   if (alreadyLiked) {
-//     await Like.deleteOne({ user: userId, post: postId });
-//     await Post.findByIdAndUpdate(postId, { $inc: { likes: -1 } });
-//   } else {
-//     await Like.create({ user: userId, post: postId });
-//     await Post.findByIdAndUpdate(postId, { $inc: { likes: 1 } });
-//   }
+  if (!postId) {
+    throw new ApiError(400, "Post ID required");
+  }
 
-//   return res.status(200).json(new ApiResponse(200, null, "Post like toggled successfully"));
-// });
+  const existingLike = await Like.findOne({
+    user: userId,
+    post: postId,
+  });
+
+  // 🔁 UNLIKE
+  if (existingLike) {
+    await existingLike.deleteOne();
+    return res.status(200).json(
+      new ApiResponse(200, { liked: false }, "Post unliked")
+    );
+  }
+
+  // ❤️ LIKE
+  await Like.create({
+    user: userId,
+    post: postId,
+  });
+
+  res.status(201).json(
+    new ApiResponse(201, { liked: true }, "Post liked")
+  );
+};
+
+
+
 
 // New one 
 
@@ -481,50 +456,69 @@ const getSinglePost = asyncHandler(async (req, res) => {
 
 
 
- const togglePostLike = asyncHandler(async (req, res) => {
-  const userId = req.user._id;
-  const { postId } = req.params;
+//  const togglePostLike = asyncHandler(async (req, res) => {
+//   const userId = req.user._id;
+//   const { postId } = req.params;
 
-  try {
-    // TRY LIKE
-    await Like.create({ user: userId, post: postId });
 
-    // remove dislike if exists
-    const removed = await Dislike.deleteOne({ user: userId, post: postId });
-    if (removed.deletedCount) {
-      await Post.updateOne(
-        { _id: postId, dislikes: { $gt: 0 } },
-        { $inc: { dislikes: -1 } }
-      );
-    }
+//   if(!userId || !postId){
+//     throw new ApiError("User or Post Id not found")
+//   }
 
-    await Post.updateOne(
-      { _id: postId },
-      { $inc: { likes: 1 } }
-    );
+//   console.log("🔥 TOGGLE LIKE API HIT");
+//   console.log("POST ID:", req.params.postId);
+//   console.log("USER ID:", req.userId);
 
-    return res.json(
-      new ApiResponse(200, { liked: true }, "Post liked")
-    );
 
-  } catch (err) {
-    // duplicate → UNLIKE
-    if (err.code === 11000) {
-      await Like.deleteOne({ user: userId, post: postId });
+//   let liked = false;
 
-      await Post.updateOne(
-        { _id: postId, likes: { $gt: 0 } },
-        { $inc: { likes: -1 } }
-      );
+//   try {
+//     // TRY LIKE
+//     await Like.create({ user: userId, post: postId });
+//     liked = true;
 
-      return res.json(
-        new ApiResponse(200, { liked: false }, "Post unliked")
-      );
-    }
-    throw err;
-  }
-});
+//     // remove dislike if exists
+//     const removedDislike = await Dislike.deleteOne({
+//       user: userId,
+//       post: postId,
+//     });
 
+//     if (removedDislike.deletedCount) {
+//       await Post.updateOne(
+//         { _id: postId, dislikes: { $gt: 0 } },
+//         { $inc: { dislikes: -1 } }
+//       );
+//     }
+
+//     // increment like
+//     await Post.updateOne(
+//       { _id: postId },
+//       { $inc: { likes: 1 } }
+//     );
+
+
+//     console.log("Post",Post)
+
+//   } catch (err) {
+//     // DUPLICATE → UNLIKE
+//     if (err.code === 11000) {
+//       liked = false;
+
+//       await Like.deleteOne({ user: userId, post: postId });
+
+//       await Post.updateOne(
+//         { _id: postId, likes: { $gt: 0 } },
+//         { $inc: { likes: -1 } }
+//       );
+//     } else {
+//       throw err;
+//     }
+//   }
+
+//   return res.status(200).json(
+//     new ApiResponse(200, { liked }, "Like toggled successfully")
+//   );
+// });
 
 
 

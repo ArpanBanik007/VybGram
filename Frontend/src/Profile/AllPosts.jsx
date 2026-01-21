@@ -23,7 +23,7 @@ const AllPosts = () => {
           "http://localhost:8000/api/v1/posts/my-posts",
           {
             withCredentials: true,
-          }
+          },
         );
         setPosts(res.data?.data || []);
       } catch (error) {
@@ -55,7 +55,7 @@ const AllPosts = () => {
 
   const handleDeletePost = async (postId) => {
     const confirmDelete = window.confirm(
-      "Are you sure you want to delete this post?"
+      "Are you sure you want to delete this post?",
     );
     if (!confirmDelete) return;
 
@@ -78,7 +78,7 @@ const AllPosts = () => {
       const res = await axios.post(
         "http://localhost:8000/api/v1/watch/watchlater",
         { postId }, // 👈 backend-এ postId পাঠাচ্ছি
-        { withCredentials: true }
+        { withCredentials: true },
       );
 
       alert(res.data?.message || "Added to Watch Later ✅");

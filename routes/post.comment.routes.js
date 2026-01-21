@@ -15,6 +15,7 @@ import { isBlocked } from "../middlewire/block.middleware.js";
 
 const router = express.Router();
 
+
 // ✅ Create a comment on a post
 router.post("/:postId", verifyJWT, isBlocked, createPostComment);
 

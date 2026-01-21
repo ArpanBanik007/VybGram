@@ -53,7 +53,7 @@ router.patch("/:postId", verifyJWT,  updatePost);
 router.delete("/:postId", verifyJWT, deletePost);
 
 // ✅ Like toggle on a post
-router.post("/:postId/like", verifyJWT, togglePostLike);
+router.route("/:postId/like").post(verifyJWT,togglePostLike)
 
 // ✅ Dislike toggle on a post
 router.post("/:postId/dislike", verifyJWT, togglePostDislike);

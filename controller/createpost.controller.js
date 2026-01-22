@@ -364,38 +364,43 @@ const getSinglePost = asyncHandler(async (req, res) => {
 // Old version 
 
 const togglePostLike = async (req, res) => {
-  const { postId } = req.params;
-  const userId = req.user._id;
+  try {
+    const userId = req.user._id;
+    const { postId } = req.params;
 
-  if (!postId) {
-    throw new ApiError(400, "Post ID required");
-  }
+    const existingLike = await Like.findOne({
+      user: userId,
+      post: postId,
+      
+    });
 
-  const existingLike = await Like.findOne({
-    user: userId,
-    post: postId,
-  });
+    if (existingLike) {
+      // UNLIKE
+      await Like.deleteOne({ _id: existingLike._id });
 
-  // 🔁 UNLIKE
-  if (existingLike) {
-    await existingLike.deleteOne();
-    return res.status(200).json(
-      new ApiResponse(200, { liked: false }, "Post unliked")
+      await Post.updateOne(
+        { _id: postId, likes: { $gt: 0 } },
+        { $inc: { likes: -1 } }
+      );
+
+      return res.json({ success: true, liked: false });
+    }
+
+    // LIKE
+    await Like.create({ user: userId, post: postId });
+
+    await Post.updateOne(
+      { _id: postId },
+      { $inc: { likes: 1 } }
     );
+
+    return res.json({ success: true, liked: true });
+
+  } catch (err) {
+    console.error("LIKE ERROR", err);
+    res.status(500).json({ success: false });
   }
-
-  // ❤️ LIKE
-  await Like.create({
-    user: userId,
-    post: postId,
-  });
-
-  res.status(201).json(
-    new ApiResponse(201, { liked: true }, "Post liked")
-  );
 };
-
-
 
 
 // New one 

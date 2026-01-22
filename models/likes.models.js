@@ -15,11 +15,6 @@ const likeSchema = new mongoose.Schema(
       index: true,
     },
 
-    video: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Video",
-      index: true,
-    },
   },
  
 {
@@ -29,29 +24,15 @@ const likeSchema = new mongoose.Schema(
   }
 );
 
+
+
 // 🔒 Unique constraints (VERY IMPORTANT)
 likeSchema.index(
   { user: 1, post: 1 },
-  { unique: true, sparse: true }
-);
-
-likeSchema.index(
-  { user: 1, video: 1 },
-  { unique: true, sparse: true }
+  { unique: true}
 );
 
 
-// ✅ Utility (optional but good)
-likeSchema.statics.isLiked = async function (
-  userId,
-  { postId = null, videoId = null }
-) {
-  const filter = { user: userId };
-  if (postId) filter.post = postId;
-  if (videoId) filter.video = videoId;
-
-  return Boolean(await this.exists(filter));
-};
 
 const Like = mongoose.model("Like", likeSchema);
 export default Like;

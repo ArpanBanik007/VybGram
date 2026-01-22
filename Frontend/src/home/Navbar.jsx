@@ -27,7 +27,7 @@ function Navbar() {
       await axios.post(
         "http://localhost:8000/api/v1/users/logout",
         {},
-        { withCredentials: true }
+        { withCredentials: true },
       );
 
       // 🧹 Redux store clear
@@ -101,7 +101,7 @@ function Navbar() {
             : navigate("/home")
         }
       >
-        Zync
+        Pluto
       </p>
 
       {/* ✅ SearchBar */}

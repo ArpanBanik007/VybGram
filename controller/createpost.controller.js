@@ -356,26 +356,30 @@ const getSinglePost = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, post, "Fetched single post successfully"));
 });
 
-/**
- * Toggle Like
- */
 
-
-// Old version 
+ // Toggle Like   ------------
+ 
 
 const togglePostLike = async (req, res) => {
   try {
-    const userId = req.user._id;
+    const userId = req.user?._id;
     const { postId } = req.params;
 
+    if (!userId || !postId) {
+      return res.status(400).json({
+        success: false,
+        message: "UserId or PostId missing",
+      });
+    }
+
+    // 1️⃣ Check already liked
     const existingLike = await Like.findOne({
       user: userId,
       post: postId,
-      
     });
 
     if (existingLike) {
-      // UNLIKE
+      // ❌ UNLIKE
       await Like.deleteOne({ _id: existingLike._id });
 
       await Post.updateOne(
@@ -383,225 +387,124 @@ const togglePostLike = async (req, res) => {
         { $inc: { likes: -1 } }
       );
 
-      return res.json({ success: true, liked: false });
+      return res.json({
+        success: true,
+        liked: false,
+      });
     }
 
-    // LIKE
-    await Like.create({ user: userId, post: postId });
+    // 2️⃣ If DISLIKE exists → remove it first
+    const existingDislike = await Dislike.findOne({
+      user: userId,
+      post: postId,
+    });
+
+    if (existingDislike) {
+      await Dislike.deleteOne({ _id: existingDislike._id });
+
+      await Post.updateOne(
+        { _id: postId, dislikes: { $gt: 0 } },
+        { $inc: { dislikes: -1 } }
+      );
+    }
+
+    // 3️⃣ ADD LIKE
+    await Like.create({
+      user: userId,
+      post: postId,
+    });
 
     await Post.updateOne(
       { _id: postId },
       { $inc: { likes: 1 } }
     );
 
-    return res.json({ success: true, liked: true });
+    return res.json({
+      success: true,
+      liked: true,
+    });
 
   } catch (err) {
-    console.error("LIKE ERROR", err);
-    res.status(500).json({ success: false });
+    console.error("LIKE ERROR:", err);
+    return res.status(500).json({
+      success: false,
+      message: "Like failed",
+    });
   }
 };
 
 
-// New one 
+// Toggle Dislike code --------------
 
-// const togglePostLike = asyncHandler(async (req, res) => {
-//   const userId = req.user?._id;
-//   const { postId } = req.params;
-
-//   if (!userId || !postId)
-//     throw new ApiError(400, "PostId or UserId not found");
-
-//   try {
-//     // TRY LIKE
-//     await Like.create({ user: userId, post: postId });
-
-//     // remove dislike if exists
-//     const disliked = await Dislike.deleteOne({ user: userId, post: postId });
-//     if (disliked.deletedCount) {
-//       // dislikes কখনো negative হবে না
-//       await Post.findOneAndUpdate(
-//         { _id: postId, dislikes: { $gt: 0 } },
-//         { $inc: { dislikes: -1 } }
-//       );
-//     }
-
-//     // likes increase
-//     await Post.findOneAndUpdate(
-//       { _id: postId },
-//       { $inc: { likes: 1 } }
-//     );
-
-//     return res
-//       .status(200)
-//       .json(new ApiResponse(200, { liked: true }, "Post liked successfully"));
-
-//   } catch (err) {
-//     // duplicate → UNLIKE
-//     if (err.code === 11000) {
-//       await Like.deleteOne({ user: userId, post: postId });
-
-//       // likes decrease, but never below 0
-//       await Post.findOneAndUpdate(
-//         { _id: postId, likes: { $gt: 0 } },
-//         { $inc: { likes: -1 } }
-//       );
-
-//       return res
-//         .status(200)
-//         .json(new ApiResponse(200, { liked: false }, "Post unliked successfully"));
-//     }
-//     throw err;
-//   }
-// });
-
-
-
-
-
-
-
-//  const togglePostLike = asyncHandler(async (req, res) => {
-//   const userId = req.user._id;
-//   const { postId } = req.params;
-
-
-//   if(!userId || !postId){
-//     throw new ApiError("User or Post Id not found")
-//   }
-
-//   console.log("🔥 TOGGLE LIKE API HIT");
-//   console.log("POST ID:", req.params.postId);
-//   console.log("USER ID:", req.userId);
-
-
-//   let liked = false;
-
-//   try {
-//     // TRY LIKE
-//     await Like.create({ user: userId, post: postId });
-//     liked = true;
-
-//     // remove dislike if exists
-//     const removedDislike = await Dislike.deleteOne({
-//       user: userId,
-//       post: postId,
-//     });
-
-//     if (removedDislike.deletedCount) {
-//       await Post.updateOne(
-//         { _id: postId, dislikes: { $gt: 0 } },
-//         { $inc: { dislikes: -1 } }
-//       );
-//     }
-
-//     // increment like
-//     await Post.updateOne(
-//       { _id: postId },
-//       { $inc: { likes: 1 } }
-//     );
-
-
-//     console.log("Post",Post)
-
-//   } catch (err) {
-//     // DUPLICATE → UNLIKE
-//     if (err.code === 11000) {
-//       liked = false;
-
-//       await Like.deleteOne({ user: userId, post: postId });
-
-//       await Post.updateOne(
-//         { _id: postId, likes: { $gt: 0 } },
-//         { $inc: { likes: -1 } }
-//       );
-//     } else {
-//       throw err;
-//     }
-//   }
-
-//   return res.status(200).json(
-//     new ApiResponse(200, { liked }, "Like toggled successfully")
-//   );
-// });
-
-
-
-
-/**
- * Toggle Dislike
- */
-
-// Old one 
-
-
-// const togglePostDislike = asyncHandler(async (req, res) => {
-//   const { postId } = req.params;
-//   const userId = req.user?._id;
-
-//   if (!postId || !userId) throw new ApiError(400, "User ID or Post ID is missing");
-
-//   const alreadyDisliked = await Dislike.findOne({ user: userId, post: postId });
-//   if (alreadyDisliked) {
-//     await Dislike.deleteOne({ user: userId, post: postId });
-//     await Post.findByIdAndUpdate(postId, { $inc: { dislikes: -1 } });
-//     return res.status(200).json(new ApiResponse(200, null, "Dislike removed successfully"));
-//   } else {
-//     await Dislike.create({ user: userId, post: postId });
-//     await Post.findByIdAndUpdate(postId, { $inc: { dislikes: 1 } });
-//     return res.status(200).json(new ApiResponse(200, null, "Disliked the post"));
-//   }
-// });
-
-// New one 
-
-const togglePostDislike = asyncHandler(async (req, res) => {
-  const userId = req.user?._id;
-  const { postId } = req.params;
-
-  if (!userId || !postId)
-    throw new ApiError(400, "PostId or UserId not found");
-
+const togglePostDislike = async (req, res) => {
   try {
-    // TRY DISLIKE
-    await Dislike.create({ user: userId, post: postId });
+    const userId = req.user?._id;
+    const { postId } = req.params;
 
-    // remove like if exists
-    const liked = await Like.deleteOne({ user: userId, post: postId });
-    if (liked.deletedCount) {
-      await Post.findByIdAndUpdate(postId, { $inc: { likes: -1 } });
+    if (!userId || !postId) {
+      throw new ApiError(400, "UserId or PostId missing");
     }
 
-    // increment dislike
-    await Post.findByIdAndUpdate(postId, { $inc: { dislikes: 1 } });
+    // 1️⃣ Check already disliked
+    const existingDislike = await Dislike.findOne({
+      user: userId,
+      post: postId,
+    });
 
-    // ApiResponse
-    return res
-      .status(200)
-      .json(
-        new ApiResponse(200, { disliked: true }, "Post disliked successfully")
+    if (existingDislike) {
+      // ❌ REMOVE DISLIKE
+      await Dislike.deleteOne({ _id: existingDislike._id });
+
+      await Post.updateOne(
+        { _id: postId, dislikes: { $gt: 0 } },
+        { $inc: { dislikes: -1 } }
       );
 
-  } catch (err) {
-    // duplicate → UNDISLIKE
-    if (err.code === 11000) {
-      await Dislike.deleteOne({ user: userId, post: postId });
-      await Post.findByIdAndUpdate(postId, { $inc: { dislikes: -1 } });
-
-      return res
-        .status(200)
-        .json(
-          new ApiResponse(200, { disliked: false }, "Dislike removed successfully")
-        );
+      return res.json({
+        success: true,
+        disliked: false,
+      });
     }
 
-    throw err;
+    // 2️⃣ If LIKE exists → REMOVE LIKE FIRST
+    const existingLike = await Like.findOne({
+      user: userId,
+      post: postId,
+    });
+
+    if (existingLike) {
+      await Like.deleteOne({ _id: existingLike._id });
+
+      await Post.updateOne(
+        { _id: postId, likes: { $gt: 0 } },
+        { $inc: { likes: -1 } }
+      );
+    }
+
+    // 3️⃣ ADD DISLIKE
+    await Dislike.create({
+      user: userId,
+      post: postId,
+    });
+
+    await Post.updateOne(
+      { _id: postId },
+      { $inc: { dislikes: 1 } }
+    );
+
+    return res.json({
+      success: true,
+      disliked: true,
+    });
+
+  } catch (error) {
+    console.error("DISLIKE ERROR:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Dislike failed",
+    });
   }
-});
-
-
-
-
+};
 
 
 /**

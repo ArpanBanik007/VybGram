@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
+import { socket } from "../socket";
 import { FaHeart } from "react-icons/fa";
 import { IoMdHeartDislike } from "react-icons/io";
 import { FaComment, FaShareNodes } from "react-icons/fa6";
@@ -8,6 +9,31 @@ import { PiDotsThreeBold } from "react-icons/pi";
 function MainFeed() {
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    posts.forEach((post) => {
+      socket.emit("join-post", post._id);
+    });
+  }, [posts]);
+
+  useEffect(() => {
+    socket.on("post-reaction-updated", (data) => {
+      setPosts((prev) =>
+        prev.map((post) =>
+          post._id === data.postId
+            ? {
+                ...post,
+                likes: data.likes,
+                dislikes: data.dislikes,
+              }
+            : post,
+        ),
+      );
+    });
+
+    return () => socket.off("post-reaction-updated");
+  }, []);
+
   useEffect(() => {
     const fetchFeedPost = async () => {
       try {
@@ -38,7 +64,7 @@ function MainFeed() {
         { withCredentials: true },
       );
 
-      const liked = res.data?.data?.liked;
+      const liked = res.data?.liked;
 
       if (typeof liked !== "boolean") {
         console.error("Invalid like response");
@@ -73,7 +99,7 @@ function MainFeed() {
         { withCredentials: true },
       );
 
-      const disliked = res.data?.data?.disliked;
+      const disliked = res.data?.disliked;
 
       if (typeof disliked !== "boolean") {
         console.error("Invalid dislike response");
@@ -82,16 +108,24 @@ function MainFeed() {
 
       setPosts((prevPosts) =>
         prevPosts.map((post) => {
-          if (postId !== post._id) return post;
+          if (post._id !== postId) return post;
 
           const currentDislikes = post.dislikes || 0;
+          const currentLikes = post.likes || 0;
 
           return {
             ...post,
             userDisliked: disliked,
             dislikes: disliked
               ? currentDislikes + 1
-              : Math.max(currentDislikes - 1, 0), // 🚫 no negative
+              : Math.max(currentDislikes - 1, 0),
+
+            // 🔥 IMPORTANT PART
+            userLiked: disliked ? false : post.userLiked,
+            likes:
+              disliked && post.userLiked
+                ? Math.max(currentLikes - 1, 0)
+                : currentLikes,
           };
         }),
       );

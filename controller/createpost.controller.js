@@ -10,6 +10,7 @@ import ApiResponse from "../utils/ApiResponse.js";
 import Like from "../models/likes.models.js";
 import Dislike from "../models/dislikes.models.js";
 import mongoose from "mongoose";
+import { io } from "../socket.js";
 
 /**
  * Create Post (text + optional image)
@@ -360,7 +361,83 @@ const getSinglePost = asyncHandler(async (req, res) => {
  // Toggle Like   ------------
  
 
-const togglePostLike = async (req, res) => {
+// const togglePostLike = async (req, res) => {
+//   try {
+//     const userId = req.user?._id;
+//     const { postId } = req.params;
+
+//     if (!userId || !postId) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "UserId or PostId missing",
+//       });
+//     }
+
+//     // 1️⃣ Check already liked
+//     const existingLike = await Like.findOne({
+//       user: userId,
+//       post: postId,
+//     });
+
+//     if (existingLike) {
+//       // ❌ UNLIKE
+//       await Like.deleteOne({ _id: existingLike._id });
+
+//       await Post.updateOne(
+//         { _id: postId, likes: { $gt: 0 } },
+//         { $inc: { likes: -1 } }
+//       );
+
+//       return res.json({
+//         success: true,
+//         liked: false,
+//       });
+//     }
+
+//     // 2️⃣ If DISLIKE exists → remove it first
+//     const existingDislike = await Dislike.findOne({
+//       user: userId,
+//       post: postId,
+//     });
+
+//     if (existingDislike) {
+//       await Dislike.deleteOne({ _id: existingDislike._id });
+
+//       await Post.updateOne(
+//         { _id: postId, dislikes: { $gt: 0 } },
+//         { $inc: { dislikes: -1 } }
+//       );
+//     }
+
+//     // 3️⃣ ADD LIKE
+//     await Like.create({
+//       user: userId,
+//       post: postId,
+//     });
+
+//     await Post.updateOne(
+//       { _id: postId },
+//       { $inc: { likes: 1 } }
+//     );
+
+//     return res.json({
+//       success: true,
+//       liked: true,
+//     });
+
+//   } catch (err) {
+//     console.error("LIKE ERROR:", err);
+//     return res.status(500).json({
+//       success: false,
+//       message: "Like failed",
+//     });
+//   }
+// };
+
+
+
+
+ const togglePostLike = async (req, res) => {
   try {
     const userId = req.user?._id;
     const { postId } = req.params;
@@ -372,58 +449,46 @@ const togglePostLike = async (req, res) => {
       });
     }
 
+    let liked;
+
     // 1️⃣ Check already liked
-    const existingLike = await Like.findOne({
-      user: userId,
-      post: postId,
-    });
+    const existingLike = await Like.findOne({ user: userId, post: postId });
 
     if (existingLike) {
       // ❌ UNLIKE
       await Like.deleteOne({ _id: existingLike._id });
+      await Post.updateOne({ _id: postId, likes: { $gt: 0 } }, { $inc: { likes: -1 } });
+      liked = false;
+    } else {
+      // 2️⃣ Remove existing dislike if any
+      const existingDislike = await Dislike.findOne({ user: userId, post: postId });
+      if (existingDislike) {
+        await Dislike.deleteOne({ _id: existingDislike._id });
+        await Post.updateOne(
+          { _id: postId, dislikes: { $gt: 0 } },
+          { $inc: { dislikes: -1 } }
+        );
+      }
 
-      await Post.updateOne(
-        { _id: postId, likes: { $gt: 0 } },
-        { $inc: { likes: -1 } }
-      );
+      // 3️⃣ ADD LIKE
+      await Like.create({ user: userId, post: postId });
+      await Post.updateOne({ _id: postId }, { $inc: { likes: 1 } });
+      liked = true;
+    }
 
-      return res.json({
-        success: true,
-        liked: false,
+    // 🔥 Get latest counts
+    const post = await Post.findById(postId).select("likes dislikes");
+
+    // 🔥 SOCKET EMIT – update all users in the room
+    if (io) {
+      io.to(`post:${postId}`).emit("post-reaction-updated", {
+        postId,
+        likes: post.likes,
+        dislikes: post.dislikes,
       });
     }
 
-    // 2️⃣ If DISLIKE exists → remove it first
-    const existingDislike = await Dislike.findOne({
-      user: userId,
-      post: postId,
-    });
-
-    if (existingDislike) {
-      await Dislike.deleteOne({ _id: existingDislike._id });
-
-      await Post.updateOne(
-        { _id: postId, dislikes: { $gt: 0 } },
-        { $inc: { dislikes: -1 } }
-      );
-    }
-
-    // 3️⃣ ADD LIKE
-    await Like.create({
-      user: userId,
-      post: postId,
-    });
-
-    await Post.updateOne(
-      { _id: postId },
-      { $inc: { likes: 1 } }
-    );
-
-    return res.json({
-      success: true,
-      liked: true,
-    });
-
+    return res.json({ success: true, liked });
   } catch (err) {
     console.error("LIKE ERROR:", err);
     return res.status(500).json({
@@ -432,6 +497,7 @@ const togglePostLike = async (req, res) => {
     });
   }
 };
+
 
 
 // Toggle Dislike code --------------

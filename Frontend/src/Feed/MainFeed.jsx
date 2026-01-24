@@ -63,6 +63,43 @@ function MainFeed() {
     }
   };
 
+  const handelDislike = async (postId) => {
+    console.log("CLICKED LIKE FOR:", postId);
+
+    try {
+      const res = await axios.post(
+        `http://localhost:8000/api/v1/posts/${postId}/dislike`,
+        {},
+        { withCredentials: true },
+      );
+
+      const disliked = res.data?.data?.disliked;
+
+      if (typeof disliked !== "boolean") {
+        console.error("Invalid dislike response");
+        return;
+      }
+
+      setPosts((prevPosts) =>
+        prevPosts.map((post) => {
+          if (postId !== post._id) return post;
+
+          const currentDislikes = post.dislikes || 0;
+
+          return {
+            ...post,
+            userDisliked: disliked,
+            dislikes: disliked
+              ? currentDislikes + 1
+              : Math.max(currentDislikes - 1, 0), // 🚫 no negative
+          };
+        }),
+      );
+    } catch (err) {
+      console.error("Like failed", err);
+    }
+  };
+
   if (loading) {
     return (
       <div className="text-center text-gray-400 py-10 text-lg">
@@ -152,11 +189,19 @@ function MainFeed() {
               </span>
             </button>
 
-            <button className="flex items-center gap-1 hover:text-violet-900">
+            <button
+              className={`flex items-center gap-1 ${
+                post.userDisliked ? "text-violet-900" : "text-gray-600"
+              }`}
+              onClick={() => {
+                console.log("DISLIKE CLICKED", post._id);
+                handelDislike(post._id);
+              }}
+            >
               <IoMdHeartDislike className="text-base" />
               <span>Dislike</span>
               <span className="text-xs text-gray-800 font-semibold ml-1">
-                {post.dislikes || 0}
+                {post.dislikes}
               </span>
             </button>
 

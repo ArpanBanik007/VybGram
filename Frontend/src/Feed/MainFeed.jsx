@@ -25,6 +25,8 @@ function MainFeed() {
                 ...post,
                 likes: data.likes,
                 dislikes: data.dislikes,
+                userLiked: data.userLiked,
+                userDisliked: data.userDisliked,
               }
             : post,
         ),
@@ -33,7 +35,6 @@ function MainFeed() {
 
     return () => socket.off("post-reaction-updated");
   }, []);
-
   useEffect(() => {
     const fetchFeedPost = async () => {
       try {
@@ -53,10 +54,8 @@ function MainFeed() {
     fetchFeedPost();
   }, []);
 
-  // Like toggle handler
+  // Like handler
   const handleLike = async (postId) => {
-    console.log("CLICKED LIKE FOR:", postId);
-
     try {
       const res = await axios.post(
         `http://localhost:8000/api/v1/posts/${postId}/like`,
@@ -65,22 +64,15 @@ function MainFeed() {
       );
 
       const liked = res.data?.liked;
+      if (typeof liked !== "boolean") return;
 
-      if (typeof liked !== "boolean") {
-        console.error("Invalid like response");
-        return;
-      }
-
-      setPosts((prevPosts) =>
-        prevPosts.map((post) => {
+      setPosts((prev) =>
+        prev.map((post) => {
           if (post._id !== postId) return post;
-
-          const currentLikes = post.likes || 0;
-
           return {
             ...post,
             userLiked: liked,
-            likes: liked ? currentLikes + 1 : Math.max(currentLikes - 1, 0), // 🚫 no negative
+            userDisliked: liked ? false : post.userDisliked, // like করলে dislike off
           };
         }),
       );
@@ -89,9 +81,8 @@ function MainFeed() {
     }
   };
 
-  const handelDislike = async (postId) => {
-    console.log("CLICKED LIKE FOR:", postId);
-
+  // Dislike handler
+  const handleDislike = async (postId) => {
     try {
       const res = await axios.post(
         `http://localhost:8000/api/v1/posts/${postId}/dislike`,
@@ -100,37 +91,20 @@ function MainFeed() {
       );
 
       const disliked = res.data?.disliked;
+      if (typeof disliked !== "boolean") return;
 
-      if (typeof disliked !== "boolean") {
-        console.error("Invalid dislike response");
-        return;
-      }
-
-      setPosts((prevPosts) =>
-        prevPosts.map((post) => {
+      setPosts((prev) =>
+        prev.map((post) => {
           if (post._id !== postId) return post;
-
-          const currentDislikes = post.dislikes || 0;
-          const currentLikes = post.likes || 0;
-
           return {
             ...post,
             userDisliked: disliked,
-            dislikes: disliked
-              ? currentDislikes + 1
-              : Math.max(currentDislikes - 1, 0),
-
-            // 🔥 IMPORTANT PART
-            userLiked: disliked ? false : post.userLiked,
-            likes:
-              disliked && post.userLiked
-                ? Math.max(currentLikes - 1, 0)
-                : currentLikes,
+            userLiked: disliked ? false : post.userLiked, // dislike করলে like off
           };
         }),
       );
     } catch (err) {
-      console.error("Like failed", err);
+      console.error("Dislike failed", err);
     }
   };
 
@@ -229,7 +203,7 @@ function MainFeed() {
               }`}
               onClick={() => {
                 console.log("DISLIKE CLICKED", post._id);
-                handelDislike(post._id);
+                handleDislike(post._id);
               }}
             >
               <IoMdHeartDislike className="text-base" />

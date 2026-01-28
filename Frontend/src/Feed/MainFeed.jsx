@@ -35,6 +35,7 @@ function MainFeed() {
 
     return () => socket.off("post-reaction-updated");
   }, []);
+
   useEffect(() => {
     const fetchFeedPost = async () => {
       try {

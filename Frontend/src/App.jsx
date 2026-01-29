@@ -10,8 +10,17 @@ import SettingPage from "./Pages/SettingPage";
 import ProfileSettting from "./settings/ProfileSettting";
 import SecuritySetting from "./settings/SecuritySetting";
 import UserProfileTotalPage from "./Pages/UserProfileTotalPage";
+import { useDispatch } from "react-redux";
+import { useEffect } from "react";
+import { fetchMydetils } from "./slices/mydetails.slice";
 
 function App() {
+  const dispatch = useDispatch();
+
+  useEffect(() => {
+    dispatch(fetchMydetils());
+  }, [dispatch]);
+
   return (
     <Routes>
       {/* login and signup */}

@@ -324,6 +324,7 @@ const changeCurrentPassword = asyncHandler(async(req, res) => {
 
 
 
+
 const getCurrentUser = asyncHandler(async (req, res) => {
  
   const user = await User.findById(req.user._id).select("-password");
@@ -370,7 +371,6 @@ const updateUserAvatar = asyncHandler(async(req, res) => {
     if (!avatarLocalPath) {
         throw new ApiError(400, "Avatar file is missing")
     }
-
 
 
     const avatar = await uploadOnCloudinary(avatarLocalPath)

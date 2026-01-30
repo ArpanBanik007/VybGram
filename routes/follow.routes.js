@@ -7,16 +7,18 @@ import {
   getAllFollowings,
   blockUser,
   unblockUser,
+  getMyAllFollowers,
 } from "../controller/follow.controller.js"; // তোমার controller
 import { isBlocked } from "../middlewire/block.middleware.js"; // block check middleware
+
 
 const router = Router();
 
 // 🔹 Follow a user (check block before allowing)
-router.post("/:id/follow", verifyJWT, isBlocked, followUser);
+router.post("/:id/follow", verifyJWT,  followUser);
 
 // 🔹 Unfollow a user (check block before allowing)
-router.post("/:id/unfollow", verifyJWT, isBlocked, unfollowUser);
+router.post("/:id/unfollow", verifyJWT, unfollowUser);
 
 // 🔹 Get followers list
 router.get("/:id/followers", verifyJWT, getAllFollowers);
@@ -29,5 +31,12 @@ router.post("/:id/block", verifyJWT, blockUser);
 
 // 🔹 Unblock a user
 router.post("/:id/unblock", verifyJWT, unblockUser);
+
+
+// 🔹 Get My followers list
+router.get("/myfollowers",verifyJWT,getMyAllFollowers);
+
+// 🔹 Get My following list
+router.get("/myfollowing",verifyJWT,getAllFollowings);
 
 export default router;

@@ -154,6 +154,7 @@ const deletePost = asyncHandler(async (req, res) => {
  * Get Posts Feed
  */
 
+
 const getPostsFeed = asyncHandler(async (req, res) => {
   const userId = new mongoose.Types.ObjectId(req.user._id);
 
@@ -206,6 +207,7 @@ const getPostsFeed = asyncHandler(async (req, res) => {
         dislikes: 1,
         createdAt: 1,
         createdBy: {
+          _id:1,
           username: 1,
           avatar: 1
         },

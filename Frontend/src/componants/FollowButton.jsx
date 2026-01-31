@@ -1,40 +1,41 @@
-import { useDispatch, useSelector } from "react-redux";
+import React from "react";
+import { useSelector, useDispatch } from "react-redux";
 import axios from "axios";
 import { addFollowing, removeFollowing } from "../slices/follow.slice";
 
-const FollowButton = ({ userId }) => {
+const FollowButton = ({ userId, isFollowedByBackend }) => {
   const dispatch = useDispatch();
-  const followings = useSelector((state) => state.follow.followings);
-  const isFollowed = followings.includes(userId);
+  const { followings } = useSelector((state) => state.follow);
 
-  const handleFollowToggle = async () => {
+  // hybrid logic
+  const isFollowed =
+    followings.length > 0 ? followings.includes(userId) : isFollowedByBackend;
+
+  const handleToggle = async () => {
     try {
       if (isFollowed) {
-        const res = await axios.post(
-          `http://localhost:8000/api/v1/users/interactions/${userId}/unfollow`,
-          {},
-          { withCredentials: true },
-        );
-        dispatch(removeFollowing(userId));
+        dispatch(removeFollowing(userId)); // optimistic UI
+        await axios.delete(`/api/v1/users/${userId}/unfollow`, {
+          withCredentials: true,
+        });
       } else {
-        const res = await axios.post(
-          `http://localhost:8000/api/v1/users/interactions/${userId}/follow`,
+        dispatch(addFollowing(userId)); // optimistic UI
+        await axios.post(
+          `/api/v1/users/${userId}/follow`,
           {},
           { withCredentials: true },
         );
-        dispatch(addFollowing(userId));
       }
     } catch (err) {
       console.error("Follow toggle failed", err);
+      // optionally, revert redux change on error
     }
   };
 
   return (
     <button
-      onClick={handleFollowToggle}
-      className={`px-3 py-1 rounded ${
-        isFollowed ? "bg-blue-500 text-white" : "bg-gray-200 text-black"
-      }`}
+      onClick={handleToggle}
+      className={`px-3 py-1 rounded text-white ${isFollowed ? "bg-gray-500" : "bg-blue-600"}`}
     >
       {isFollowed ? "Following" : "Follow"}
     </button>

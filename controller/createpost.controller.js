@@ -9,6 +9,7 @@ import escapeStringRegexp from "escape-string-regexp";
 import ApiResponse from "../utils/ApiResponse.js";
 import Like from "../models/likes.models.js";
 import Dislike from "../models/dislikes.models.js";
+import { Follow } from "../models/folllow.models.js";
 import mongoose from "mongoose";
 import { io } from "../socket.js";
 
@@ -155,14 +156,90 @@ const deletePost = asyncHandler(async (req, res) => {
  */
 
 
+// const getPostsFeed = asyncHandler(async (req, res) => {
+//   const userId = new mongoose.Types.ObjectId(req.user._id);
+
+
+
+//   const posts = await Post.aggregate([
+//     { $sort: { createdAt: -1 } },
+
+//     {
+//       $lookup: {
+//         from: "users",
+//         localField: "createdBy",
+//         foreignField: "_id",
+//         as: "createdBy"
+//       }
+//     },
+//     { $unwind: "$createdBy" },
+
+//     {
+//       $lookup: {
+//         from: "likes",
+//         let: { postId: "$_id", userId },
+//         pipeline: [
+//           {
+//             $match: {
+//               $expr: {
+//                 $and: [
+//                   { $eq: ["$post", "$$postId"] },
+//                   { $eq: ["$user", "$$userId"] }
+//                 ]
+//               }
+//             }
+//           }
+//         ],
+//         as: "userLike"
+//       }
+//     },
+
+//     {
+//       $addFields: {
+//         userLiked: { $gt: [{ $size: "$userLike" }, 0] }
+//       }
+//     },
+
+//       {
+//       $addFields: {
+//         "createdBy.isFollowedByMe": { $in: ["$createdBy._id", followingIds] }
+//       }
+//     },
+
+//     {
+//       $project: {
+//         title: 1,
+//         posturl: 1,
+//         likes: 1,
+//         dislikes: 1,
+//         createdAt: 1,
+//       createdBy: { _id: 1, 
+//         username: 1,
+//          avatar: 1, 
+//         isFollowedByMe: 1 },
+//         userLiked: 1
+//       }
+//     }
+//   ]);
+
+//   res.json({ posts });
+// });
+
+
+
+
 const getPostsFeed = asyncHandler(async (req, res) => {
-  const userId = new mongoose.Types.ObjectId(req.user._id);
+  const userId = req.user._id;
 
+  // ✅ 1. Fetch all followings of current user
+  const myFollowings = await Follow.find({ follower: userId }).select("following");
+  const followingIds = myFollowings.map(f => f.following);
 
-
+  // ✅ 2. Aggregate posts
   const posts = await Post.aggregate([
     { $sort: { createdAt: -1 } },
 
+    // join createdBy user
     {
       $lookup: {
         from: "users",
@@ -173,10 +250,11 @@ const getPostsFeed = asyncHandler(async (req, res) => {
     },
     { $unwind: "$createdBy" },
 
+    // check if current user liked the post
     {
       $lookup: {
         from: "likes",
-        let: { postId: "$_id", userId },
+        let: { postId: "$_id", userId: userId },
         pipeline: [
           {
             $match: {
@@ -192,10 +270,16 @@ const getPostsFeed = asyncHandler(async (req, res) => {
         as: "userLike"
       }
     },
-
     {
       $addFields: {
         userLiked: { $gt: [{ $size: "$userLike" }, 0] }
+      }
+    },
+
+    // ✅ check if current user follows the post creator
+    {
+      $addFields: {
+        "createdBy.isFollowedByMe": { $in: ["$createdBy._id", followingIds] }
       }
     },
 
@@ -206,11 +290,7 @@ const getPostsFeed = asyncHandler(async (req, res) => {
         likes: 1,
         dislikes: 1,
         createdAt: 1,
-        createdBy: {
-          _id:1,
-          username: 1,
-          avatar: 1
-        },
+        createdBy: { _id: 1, username: 1, avatar: 1, isFollowedByMe: 1 },
         userLiked: 1
       }
     }
@@ -218,6 +298,10 @@ const getPostsFeed = asyncHandler(async (req, res) => {
 
   res.json({ posts });
 });
+
+
+
+
 
 
 

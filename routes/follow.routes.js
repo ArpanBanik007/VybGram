@@ -8,6 +8,7 @@ import {
   blockUser,
   unblockUser,
   getMyAllFollowers,
+  getMyAllFollowing,
 } from "../controller/follow.controller.js"; // তোমার controller
 import { isBlocked } from "../middlewire/block.middleware.js"; // block check middleware
 
@@ -37,6 +38,6 @@ router.post("/:id/unblock", verifyJWT, unblockUser);
 router.get("/myfollowers",verifyJWT,getMyAllFollowers);
 
 // 🔹 Get My following list
-router.get("/myfollowing",verifyJWT,getAllFollowings);
+router.get("/myfollowing",verifyJWT,getMyAllFollowing);
 
 export default router;

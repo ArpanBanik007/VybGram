@@ -8,27 +8,48 @@ import { IoMdHeartDislike } from "react-icons/io";
 import { FaComment, FaShareNodes } from "react-icons/fa6";
 import { PiDotsThreeBold } from "react-icons/pi";
 
-import { useSelector } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
 import FollowButton from "../componants/FollowButton";
+import { fetchMyFollowings } from "../slices/follow.slice";
 
 function MainFeed() {
+  const dispatch = useDispatch();
   const { mydetails, loading: userLoading } = useSelector(
     (state) => state.mydetails,
   );
+  const { followings } = useSelector((state) => state.follow);
 
   const [posts, setPosts] = useState([]);
   const [feedLoading, setFeedLoading] = useState(true);
 
-  /* ================= JOIN SOCKET ROOMS ================= */
+  /* ================= FETCH CURRENT USER FOLLOWINGS ================= */
   useEffect(() => {
-    posts.forEach((post) => {
-      socket.emit("join-post", post._id);
-    });
-  }, [posts]);
+    dispatch(fetchMyFollowings());
+  }, [dispatch]);
 
-  /* ================= SOCKET LISTENER ================= */
+  /* ================= FETCH FEED ================= */
   useEffect(() => {
-    socket.on("post-reaction-updated", (data) => {
+    const fetchFeed = async () => {
+      try {
+        const res = await axios.get("http://localhost:8000/api/v1/posts/feed", {
+          withCredentials: true,
+        });
+        setPosts(res.data?.posts || []);
+      } catch (err) {
+        console.error("Failed to fetch posts:", err);
+      } finally {
+        setFeedLoading(false);
+      }
+    };
+    fetchFeed();
+  }, []);
+
+  /* ================= SOCKET REACTIONS ================= */
+  useEffect(() => {
+    // join socket rooms for all posts
+    posts.forEach((post) => socket.emit("join-post", post._id));
+
+    const handleReactionUpdate = (data) => {
       setPosts((prev) =>
         prev.map((post) =>
           post._id === data.postId
@@ -42,29 +63,13 @@ function MainFeed() {
             : post,
         ),
       );
-    });
-
-    return () => socket.off("post-reaction-updated");
-  }, []);
-
-  /* ================= FETCH FEED ================= */
-  useEffect(() => {
-    const fetchFeedPost = async () => {
-      try {
-        const res = await axios.get("http://localhost:8000/api/v1/posts/feed", {
-          withCredentials: true,
-        });
-        setPosts(res.data?.posts || []);
-      } catch (error) {
-        console.error("Failed to fetch posts:", error);
-      } finally {
-        setFeedLoading(false);
-      }
     };
-    fetchFeedPost();
-  }, []);
 
-  /* ================= LIKE / DISLIKE ================= */
+    socket.on("post-reaction-updated", handleReactionUpdate);
+    return () => socket.off("post-reaction-updated", handleReactionUpdate);
+  }, [posts]);
+
+  /* ================= LIKE / DISLIKE HANDLERS ================= */
   const handleLike = async (postId) => {
     try {
       const res = await axios.post(
@@ -117,7 +122,7 @@ function MainFeed() {
     }
   };
 
-  /* ================= LOADING / NO POSTS ================= */
+  /* ================= LOADING / EMPTY STATE ================= */
   if (feedLoading || userLoading) {
     return (
       <div className="text-center text-gray-400 py-10 text-lg">
@@ -134,7 +139,7 @@ function MainFeed() {
     );
   }
 
-  /* ================= RENDER ================= */
+  /* ================= RENDER POSTS ================= */
   return (
     <>
       {posts.map((post) => (
@@ -142,7 +147,7 @@ function MainFeed() {
           key={post._id}
           className="bg-cyan-200 w-full max-w-md mx-auto mt-2 mb-6 border rounded-xl shadow-md"
         >
-          {/* Header */}
+          {/* HEADER */}
           <div className="flex items-center justify-between p-3">
             <div className="flex items-center">
               <img
@@ -159,15 +164,18 @@ function MainFeed() {
               </div>
             </div>
 
-            {/* FOLLOW BUTTON */}
+            {/* FOLLOW BUTTON (HYBRID) */}
             {post.createdBy._id !== mydetails?._id && (
-              <FollowButton userId={post.createdBy._id} />
+              <FollowButton
+                userId={post.createdBy._id}
+                isFollowedByBackend={post.createdBy.isFollowedByMe}
+              />
             )}
 
             <PiDotsThreeBold className="text-2xl cursor-pointer" />
           </div>
 
-          {/* Content */}
+          {/* CONTENT */}
           <div className="px-3 pb-3">
             {post.title && <p className="mb-2 font-semibold">{post.title}</p>}
             {post.posturl && (
@@ -178,7 +186,7 @@ function MainFeed() {
             )}
           </div>
 
-          {/* Actions */}
+          {/* ACTIONS */}
           <div className="border-t flex justify-around py-2 text-sm">
             <button
               onClick={() => handleLike(post._id)}

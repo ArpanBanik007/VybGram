@@ -1,26 +1,25 @@
-// src/components/MainFeed.jsx
 import { useEffect, useState } from "react";
 import axios from "axios";
 import { socket } from "../socket";
 
 import { FaHeart } from "react-icons/fa";
-import { IoMdHeartDislike } from "react-icons/io";
 import { FaComment, FaShareNodes } from "react-icons/fa6";
 import { PiDotsThreeBold } from "react-icons/pi";
 
 import { useSelector, useDispatch } from "react-redux";
 import FollowButton from "../componants/FollowButton";
 import { fetchMyFollowings } from "../slices/follow.slice";
+import PostActionMenu from "../componants/PostActionMenu";
 
 function MainFeed() {
   const dispatch = useDispatch();
   const { mydetails, loading: userLoading } = useSelector(
     (state) => state.mydetails,
   );
-  const { followings } = useSelector((state) => state.follow);
 
   const [posts, setPosts] = useState([]);
   const [feedLoading, setFeedLoading] = useState(true);
+  const [openMenuId, setOpenMenuId] = useState(null);
 
   /* ================= FETCH CURRENT USER FOLLOWINGS ================= */
   useEffect(() => {
@@ -44,9 +43,22 @@ function MainFeed() {
     fetchFeed();
   }, []);
 
+  /* ================= SAVE POST ================= */
+  const handleSavePost = async (postId) => {
+    try {
+      await axios.post(
+        "http://localhost:8000/api/v1/watch/watchlater",
+        { postId },
+        { withCredentials: true },
+      );
+      alert("Post saved ✅");
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   /* ================= SOCKET REACTIONS ================= */
   useEffect(() => {
-    // join socket rooms for all posts
     posts.forEach((post) => socket.emit("join-post", post._id));
 
     const handleReactionUpdate = (data) => {
@@ -69,7 +81,7 @@ function MainFeed() {
     return () => socket.off("post-reaction-updated", handleReactionUpdate);
   }, [posts]);
 
-  /* ================= LIKE / DISLIKE HANDLERS ================= */
+  /* ================= LIKE ================= */
   const handleLike = async (postId) => {
     try {
       const res = await axios.post(
@@ -77,6 +89,7 @@ function MainFeed() {
         {},
         { withCredentials: true },
       );
+
       const liked = res.data?.liked;
       if (typeof liked !== "boolean") return;
 
@@ -96,33 +109,7 @@ function MainFeed() {
     }
   };
 
-  const handleDislike = async (postId) => {
-    try {
-      const res = await axios.post(
-        `http://localhost:8000/api/v1/posts/${postId}/dislike`,
-        {},
-        { withCredentials: true },
-      );
-      const disliked = res.data?.disliked;
-      if (typeof disliked !== "boolean") return;
-
-      setPosts((prev) =>
-        prev.map((post) =>
-          post._id === postId
-            ? {
-                ...post,
-                userDisliked: disliked,
-                userLiked: disliked ? false : post.userLiked,
-              }
-            : post,
-        ),
-      );
-    } catch (err) {
-      console.error("Dislike failed", err);
-    }
-  };
-
-  /* ================= LOADING / EMPTY STATE ================= */
+  /* ================= LOADING ================= */
   if (feedLoading || userLoading) {
     return (
       <div className="text-center text-gray-400 py-10 text-lg">
@@ -139,13 +126,13 @@ function MainFeed() {
     );
   }
 
-  /* ================= RENDER POSTS ================= */
+  /* ================= RENDER ================= */
   return (
     <>
       {posts.map((post) => (
         <div
           key={post._id}
-          className="bg-cyan-200 w-full max-w-md mx-auto mt-2 mb-6 border rounded-xl shadow-md"
+          className="bg-cyan-300 w-full max-w-md mx-auto mt-2 mb-6 border rounded-xl shadow-md relative"
         >
           {/* HEADER */}
           <div className="flex items-center justify-between p-3">
@@ -164,7 +151,6 @@ function MainFeed() {
               </div>
             </div>
 
-            {/* FOLLOW BUTTON (HYBRID) */}
             {post.createdBy._id !== mydetails?._id && (
               <FollowButton
                 userId={post.createdBy._id}
@@ -172,7 +158,20 @@ function MainFeed() {
               />
             )}
 
-            <PiDotsThreeBold className="text-2xl cursor-pointer" />
+            <PiDotsThreeBold
+              className="text-2xl cursor-pointer"
+              onClick={() =>
+                setOpenMenuId(openMenuId === post._id ? null : post._id)
+              }
+            />
+
+            {/* 🔥 STEP 6 MENU */}
+            <PostActionMenu
+              isOpen={openMenuId === post._id}
+              onClose={() => setOpenMenuId(null)}
+              onSave={() => handleSavePost(post._id)}
+              onBlock={() => console.log("Block user:", post.createdBy._id)}
+            />
           </div>
 
           {/* CONTENT */}
@@ -193,13 +192,6 @@ function MainFeed() {
               className={post.userLiked ? "text-red-500" : ""}
             >
               <FaHeart /> {post.likes}
-            </button>
-
-            <button
-              onClick={() => handleDislike(post._id)}
-              className={post.userDisliked ? "text-violet-700" : ""}
-            >
-              <IoMdHeartDislike /> {post.dislikes}
             </button>
 
             <button>

@@ -14,6 +14,9 @@ export const fetchMyFollowings = createAsyncThunk(
   }
 );
 
+
+
+
 const followSlice = createSlice({
   name: "follow",
   initialState: {

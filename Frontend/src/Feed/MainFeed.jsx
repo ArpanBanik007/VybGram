@@ -135,7 +135,7 @@ function MainFeed() {
           className="bg-cyan-300 w-full max-w-md mx-auto mt-2 mb-6 border rounded-xl shadow-md relative"
         >
           {/* HEADER */}
-          <div className="flex items-center justify-between p-3">
+          <div className="flex items-center justify-between p-3 cursor-pointer">
             <div className="flex items-center">
               <img
                 src={
@@ -191,7 +191,7 @@ function MainFeed() {
               onClick={() => handleLike(post._id)}
               className={post.userLiked ? "text-red-500" : ""}
             >
-              <FaHeart /> {post.likes}
+              <FaHeart className=" cursor-pointer" /> {post.likes}
             </button>
 
             <button>

@@ -42,11 +42,14 @@ const FollowButton = ({ userId, isFollowedByBackend }) => {
     }
   };
 
+
+// 
+
   return (
     <button
       onClick={handleToggle}
       className={`px-3 py-1 rounded text-white ${
-        isFollowed ? "bg-gray-500" : "bg-blue-600"
+        isFollowed ? "bg-gray-500" : "bg-blue-600 "
       }`}
     >
       {isFollowed ? "Following" : "Follow"}

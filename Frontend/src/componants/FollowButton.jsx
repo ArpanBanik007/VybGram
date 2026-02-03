@@ -42,8 +42,7 @@ const FollowButton = ({ userId, isFollowedByBackend }) => {
     }
   };
 
-
-// 
+  //
 
   return (
     <button

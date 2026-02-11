@@ -10,6 +10,7 @@ import { useSelector, useDispatch } from "react-redux";
 import FollowButton from "../componants/FollowButton";
 import { fetchMyFollowings } from "../slices/follow.slice";
 import PostActionMenu from "../componants/PostActionMenu";
+import { useNavigate } from "react-router-dom";
 
 function MainFeed() {
   const dispatch = useDispatch();
@@ -20,6 +21,7 @@ function MainFeed() {
   const [posts, setPosts] = useState([]);
   const [feedLoading, setFeedLoading] = useState(true);
   const [openMenuId, setOpenMenuId] = useState(null);
+  const navigate = useNavigate();
 
   /* ================= FETCH CURRENT USER FOLLOWINGS ================= */
   useEffect(() => {
@@ -57,6 +59,15 @@ function MainFeed() {
     }
   };
 
+  /* ================= SOCKET JOIN ================= */
+  useEffect(() => {
+    if (posts.length > 0) {
+      posts.forEach((post) => {
+        socket.emit("join-post", `post:${post._id}`);
+      });
+    }
+  }, [posts]);
+
   /* ================= SOCKET REACTIONS ================= */
   useEffect(() => {
     posts.forEach((post) => socket.emit("join-post", post._id));
@@ -80,6 +91,23 @@ function MainFeed() {
     socket.on("post-reaction-updated", handleReactionUpdate);
     return () => socket.off("post-reaction-updated", handleReactionUpdate);
   }, [posts]);
+
+  /* ================= COMMENT COUNT LISTENER ================= */
+  useEffect(() => {
+    const handleCommentCountUpdate = ({ postId, comments }) => {
+      setPosts((prev) =>
+        prev.map((post) =>
+          post._id === postId ? { ...post, comments } : post,
+        ),
+      );
+    };
+
+    socket.on("comment-count-updated", handleCommentCountUpdate);
+
+    return () => {
+      socket.off("comment-count-updated", handleCommentCountUpdate);
+    };
+  }, []);
 
   /* ================= LIKE ================= */
   const handleLike = async (postId) => {
@@ -194,8 +222,8 @@ function MainFeed() {
               <FaHeart className=" cursor-pointer" /> {post.likes}
             </button>
 
-            <button>
-              <FaComment /> {post.comments || 0}
+            <button onClick={() => navigate(`/post/${post._id}`)}>
+              <FaComment className=" cursor-pointer" /> {post.comments || 0}
             </button>
 
             <button>

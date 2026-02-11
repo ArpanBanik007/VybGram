@@ -17,10 +17,11 @@ const router = express.Router();
 
 
 // ✅ Create a comment on a post
-router.post("/:postId", verifyJWT, isBlocked, createPostComment);
+router.post("/post/:postId", verifyJWT, createPostComment);
 
-// ✅ Get all top-level comments for a post
-router.get("/:postId", getAllCommentsForPost);
+
+//get all for single comments
+router.get("/post/:postId", getAllCommentsForPost);
 
 // ✅ Get replies for a specific comment
 router.get("/replies/:commentId", getRepliesByCommentIdForPost);

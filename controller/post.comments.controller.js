@@ -3,55 +3,51 @@ import ApiResponse from "../utils/ApiResponse.js";
 import asyncHandler from "../utils/asyncHandler.js";
 import Comment from "../models/comments.models.js"
 import Post from "../models/createpost.models.js";
-
+import { io } from "../socket.js";
 
 
 
 const createPostComment = asyncHandler(async (req, res) => {
-  const userId = req.user?._id;
-  const { content, parentComment } = req.body;
-  const { postId } = req.params; // Post ID path theke ashbe
+  const userId = req.user._id;
+  const { content } = req.body;
+  const { postId } = req.params;
 
-  // Validation
-  if (!postId || !userId || !content || content.trim() === "") {
-    throw new ApiError(400, "Post ID, User ID, and valid content are required");
+  if (!content?.trim()) {
+    throw new ApiError(400, "Comment content required");
   }
 
-  // Check Post exists or not
   const post = await Post.findById(postId);
-  if (!post) {
-    throw new ApiError(404, "Post not found");
-  }
+  if (!post) throw new ApiError(404, "Post not found");
 
-  // If reply to another comment
-  let parent = null;
-  if (parentComment) {
-    parent = await Comment.findById(parentComment);
-    if (!parent) {
-      throw new ApiError(404, "Parent comment not found");
-    }
-
-    // Ensure parent comment belongs to the same post
-    if (String(parent.post) !== postId) {
-      throw new ApiError(400, "Parent comment does not belong to this post");
-    }
-  }
-
-  // Create new comment
-  const newComment = await Comment.create({
+  // 1️⃣ Create comment
+  const comment = await Comment.create({
     content: content.trim(),
     user: userId,
-    post: postId, // ekhane video na, post use korte hobe
-    parentComment: parentComment || null,
+    post: postId,
   });
 
-  // Update comment count in Post
-  await Post.findByIdAndUpdate(postId, { $inc: { commentsCount: 1 } });
+  // 2️⃣ Increment comment count
+  const updatedPost = await Post.findByIdAndUpdate(
+    postId,
+    { $inc: { comments: 1 } },
+    { new: true }
+  ).select("comments");
 
-  return res
-    .status(201)
-    .json(new ApiResponse(201, newComment, "Comment posted successfully on Post"));
+  await comment.populate("user", "username avatar");
+
+  // 3️⃣ SOCKET EMIT (🔥 FIXED)
+  io.to(`post:${postId}`).emit("comment-count-updated", {
+    postId,
+    comments: updatedPost.comments,
+  });
+
+  res.status(201).json(
+    new ApiResponse(201, comment, "Comment created")
+  );
 });
+
+
+
 
 
 const getAllCommentsForPost = asyncHandler(async (req, res) => {
@@ -246,7 +242,7 @@ const deleteCommentForPost = asyncHandler(async (req, res) => {
     .json(
       new ApiResponse(200, null, "Comment and its replies deleted successfully")
     );
-});
+}); 
 
 
 // ✅ Toggle like on comment under Post
@@ -290,6 +286,7 @@ const toggleLikeOnCommentForPost = asyncHandler(async (req, res) => {
     )
   );
 });
+
 
 
 

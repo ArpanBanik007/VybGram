@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { useDispatch } from "react-redux";
 import axios from "axios";
+import { useNavigate } from "react-router-dom";
+
 import { addFollowing, removeFollowing } from "../slices/follow.slice";
 
 const FollowButton = ({ userId, isFollowedByBackend }) => {

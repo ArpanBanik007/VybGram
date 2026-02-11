@@ -13,6 +13,7 @@ import UserProfileTotalPage from "./Pages/UserProfileTotalPage";
 import { useDispatch } from "react-redux";
 import { useEffect } from "react";
 import { fetchMydetils } from "./slices/mydetails.slice";
+import CommentPage from "./Pages/CommentPage";
 
 function App() {
   const dispatch = useDispatch();
@@ -26,7 +27,6 @@ function App() {
       {/* login and signup */}
       <Route path="/" element={<LoginPage />} />
       <Route path="/signup" element={<SignUp />} />
-
       {/* other pages */}
       <Route path="/home" element={<HomePage />} />
       <Route path="/videos" element={<Videopage />} />
@@ -37,6 +37,7 @@ function App() {
       <Route path="/settings/profile" element={<ProfileSettting />} />
       <Route path="/settings/security" element={<SecuritySetting />} />
       <Route path="/profile/user" element={<UserProfileTotalPage />} />
+      <Route path="/post/:postId" element={<CommentPage />} />
     </Routes>
   );
 }

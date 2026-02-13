@@ -19,35 +19,33 @@ const createPostComment = asyncHandler(async (req, res) => {
   const post = await Post.findById(postId);
   if (!post) throw new ApiError(404, "Post not found");
 
-  // 1️⃣ Create comment
+  // 1️⃣ create comment
   const comment = await Comment.create({
     content: content.trim(),
     user: userId,
     post: postId,
   });
 
-  // 2️⃣ Increment comment count
+  // 2️⃣ increment count
   const updatedPost = await Post.findByIdAndUpdate(
     postId,
-    { $inc: { comments: 1 } },
+    { $inc: { commentsCount: 1 } },
     { new: true }
-  ).select("comments");
+  ).select("commentsCount");
+  
 
   await comment.populate("user", "username avatar");
 
-  // 3️⃣ SOCKET EMIT (🔥 FIXED)
+  // 3️⃣ SOCKET EMIT (🔥 KEY POINT)
   io.to(`post:${postId}`).emit("comment-count-updated", {
     postId,
-    comments: updatedPost.comments,
+    commentsCount: updatedPost.commentsCount,
   });
 
   res.status(201).json(
     new ApiResponse(201, comment, "Comment created")
   );
 });
-
-
-
 
 
 const getAllCommentsForPost = asyncHandler(async (req, res) => {

@@ -94,19 +94,16 @@ function MainFeed() {
 
   /* ================= COMMENT COUNT LISTENER ================= */
   useEffect(() => {
-    const handleCommentCountUpdate = ({ postId, comments }) => {
+    const handleCommentCountUpdate = ({ postId, commentsCount }) => {
       setPosts((prev) =>
         prev.map((post) =>
-          post._id === postId ? { ...post, comments } : post,
+          post._id === postId ? { ...post, commentsCount } : post,
         ),
       );
     };
 
     socket.on("comment-count-updated", handleCommentCountUpdate);
-
-    return () => {
-      socket.off("comment-count-updated", handleCommentCountUpdate);
-    };
+    return () => socket.off("comment-count-updated", handleCommentCountUpdate);
   }, []);
 
   /* ================= LIKE ================= */
@@ -172,7 +169,7 @@ function MainFeed() {
                 className="h-10 w-10 rounded-full"
               />
               <div className="ml-3">
-                <h3 className="font-semibold">{post?.createdBy?.username}</h3>
+                <h3 className="font-semibold">@{post?.createdBy?.username}</h3>
                 <p className="text-sm text-gray-700">
                   {new Date(post.createdAt).toLocaleString()}
                 </p>
@@ -223,7 +220,8 @@ function MainFeed() {
             </button>
 
             <button onClick={() => navigate(`/post/${post._id}`)}>
-              <FaComment className=" cursor-pointer" /> {post.comments || 0}
+              <FaComment className=" cursor-pointer" />{" "}
+              {post.commentsCount || 0}
             </button>
 
             <button>

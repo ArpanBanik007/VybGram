@@ -1,34 +1,29 @@
-import { Server, Socket } from "socket.io";
+import { Server } from "socket.io";
 
-export let io ;
+let io;
 
-
-
-export const initSocket=(httpServer)=>{
-    io= new Server(httpServer,{
-          cors: {
+export const initSocket = (server) => {
+  io = new Server(server, {
+    cors: {
       origin: "http://localhost:5173",
       credentials: true,
     },
+  });
+
+  io.on("connection", (socket) => {
+    console.log("User connected:", socket.id);
+
+    socket.on("join-post", (room) => {
+      socket.join(room);
+      console.log("Joined room:", room);
     });
 
-
-
-    
-
-    
-io.on("connection", (socket) => {
-  console.log("Socket Connected", socket.id);
-
-  socket.on("join-post", (postId) => {
-    socket.join(`post:${postId}`);
+    socket.on("disconnect", () => {
+      console.log("User disconnected:", socket.id);
+    });
   });
 
-  socket.on("disconnect", () => {
-    console.log("Socket disconnected");
-  });
-});
+  return io;
+};
 
-
-
-}
+export { io };

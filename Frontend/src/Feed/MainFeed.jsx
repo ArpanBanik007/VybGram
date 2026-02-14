@@ -61,12 +61,12 @@ function MainFeed() {
 
   /* ================= SOCKET JOIN ================= */
   useEffect(() => {
-    if (posts.length > 0) {
-      posts.forEach((post) => {
-        socket.emit("join-post", `post:${post._id}`);
-      });
-    }
-  }, [posts]);
+    if (!posts.length) return;
+
+    posts.forEach((post) => {
+      socket.emit("join-post", `post:${post._id}`);
+    });
+  }, [posts.length]);
 
   /* ================= SOCKET REACTIONS ================= */
   useEffect(() => {
@@ -90,14 +90,17 @@ function MainFeed() {
 
     socket.on("post-reaction-updated", handleReactionUpdate);
     return () => socket.off("post-reaction-updated", handleReactionUpdate);
-  }, [posts]);
+  }, []);
 
   /* ================= COMMENT COUNT LISTENER ================= */
   useEffect(() => {
-    const handleCommentCountUpdate = ({ postId, commentsCount }) => {
+    const handleCommentCountUpdate = ({ postId, comments }) => {
+      console.log("SOCKET  Post ID:", postId);
+      console.log("SOCKET Comments Data:", comments);
+
       setPosts((prev) =>
         prev.map((post) =>
-          post._id === postId ? { ...post, commentsCount } : post,
+          post._id === postId ? { ...post, comments } : post,
         ),
       );
     };

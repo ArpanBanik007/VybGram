@@ -18,9 +18,9 @@ export const initSocket = (server) => {
       console.log("Joined room:", room);
     });
 
-    socket.on("disconnect", () => {
-      console.log("User disconnected:", socket.id);
-    });
+   socket.on("disconnect", (reason) => {
+    console.log("User disconnected:", socket.id, "Reason:", reason);
+  });
   });
 
   return io;

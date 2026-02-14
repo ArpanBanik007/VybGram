@@ -6,11 +6,13 @@ import Post from "../models/createpost.models.js";
 import { io } from "../socket.js";
 
 
-
 const createPostComment = asyncHandler(async (req, res) => {
   const userId = req.user._id;
   const { content } = req.body;
   const { postId } = req.params;
+
+
+
 
   if (!content?.trim()) {
     throw new ApiError(400, "Comment content required");
@@ -19,34 +21,35 @@ const createPostComment = asyncHandler(async (req, res) => {
   const post = await Post.findById(postId);
   if (!post) throw new ApiError(404, "Post not found");
 
-  // 1️⃣ create comment
+  // 1️⃣ Create comment
   const comment = await Comment.create({
     content: content.trim(),
     user: userId,
     post: postId,
   });
 
-  // 2️⃣ increment count
+  // 2️⃣ Increment comments count
   const updatedPost = await Post.findByIdAndUpdate(
     postId,
-    { $inc: { commentsCount: 1 } },
+    { $inc: { comments: 1 } },
     { new: true }
-  ).select("commentsCount");
-  
+  ).select("comments");
 
   await comment.populate("user", "username avatar");
 
-  // 3️⃣ SOCKET EMIT (🔥 KEY POINT)
+  console.log("UPDATED POST COUNT:", updatedPost.comments);
+  console.log("Emitting to room:", `post:${postId}`);
+
+  // 3️⃣ Emit updated count
   io.to(`post:${postId}`).emit("comment-count-updated", {
     postId,
-    commentsCount: updatedPost.commentsCount,
+    comments: updatedPost.comments,
   });
 
   res.status(201).json(
     new ApiResponse(201, comment, "Comment created")
   );
 });
-
 
 const getAllCommentsForPost = asyncHandler(async (req, res) => {
   const { postId } = req.params;

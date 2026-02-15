@@ -4,6 +4,9 @@ import asyncHandler from "../utils/asyncHandler.js";
 import Comment from "../models/comments.models.js"
 import Post from "../models/createpost.models.js";
 import { io } from "../socket.js";
+import mongoose from "mongoose";
+
+
 
 
 const createPostComment = asyncHandler(async (req, res) => {
@@ -50,6 +53,7 @@ const createPostComment = asyncHandler(async (req, res) => {
     new ApiResponse(201, comment, "Comment created")
   );
 });
+
 
 const getAllCommentsForPost = asyncHandler(async (req, res) => {
   const { postId } = req.params;

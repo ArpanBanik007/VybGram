@@ -95,9 +95,6 @@ function MainFeed() {
   /* ================= COMMENT COUNT LISTENER ================= */
   useEffect(() => {
     const handleCommentCountUpdate = ({ postId, comments }) => {
-      console.log("SOCKET  Post ID:", postId);
-      console.log("SOCKET Comments Data:", comments);
-
       setPosts((prev) =>
         prev.map((post) =>
           post._id === postId ? { ...post, comments } : post,
@@ -106,6 +103,7 @@ function MainFeed() {
     };
 
     socket.on("comment-count-updated", handleCommentCountUpdate);
+
     return () => socket.off("comment-count-updated", handleCommentCountUpdate);
   }, []);
 
@@ -223,8 +221,7 @@ function MainFeed() {
             </button>
 
             <button onClick={() => navigate(`/post/${post._id}`)}>
-              <FaComment className=" cursor-pointer" />{" "}
-              {post.commentsCount || 0}
+              <FaComment className=" cursor-pointer" /> {post.comments || 0}
             </button>
 
             <button>
